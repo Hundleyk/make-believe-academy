@@ -6,14 +6,15 @@ extends PanelContainer
 ##   - "Anywhere" lists items that go in any room, grouped by type.
 ## Picking a room tab glides the camera to that room. Keys 1-9 pick from the open tab.
 
-const Visuals := preload("res://scripts/item_visuals.gd")
+const Style := preload("res://scripts/ui/ui_style.gd")
+const W := preload("res://scripts/ui/widgets.gd")
 
 const ANYWHERE := "any"
 const START_TAB := "castle"
 ## Order of the type groups on the Anywhere tab.
 const TYPE_ORDER := ["Structure", "Light", "Comfort", "Fun", "Decor", "Regulation"]
-const CARD_SIZE := Vector2(150, 48)   ## Name and price; hover a card for its effect
-const MENU_WIDTH := 800.0
+const CARD_SIZE := Vector2(184, 48)   ## Name and price; hover a card for its effect
+const MENU_WIDTH := 600.0
 
 var hud: CanvasLayer
 var build_mode: Node3D
@@ -35,10 +36,9 @@ func setup(the_hud: CanvasLayer, mode: Node3D) -> void:
 	build_mode = mode
 	main = mode.main
 	students = mode.students
-	var sample: PanelContainer = hud._paper_panel()
-	add_theme_stylebox_override("panel", sample.get_theme_stylebox("panel"))
-	sample.free()
-	set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 16)
+	add_theme_stylebox_override("panel", Style.paper_box(16))
+	visible = false
+	set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 20)
 	grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	grow_vertical = Control.GROW_DIRECTION_BEGIN
 
@@ -49,8 +49,7 @@ func setup(the_hud: CanvasLayer, mode: Node3D) -> void:
 	var top := HBoxContainer.new()
 	top.add_theme_constant_override("separation", 6)
 	col.add_child(top)
-	var title: Label = hud._label(20)
-	title.text = "Build   "
+	var title := Style.label("Build  ", 21, 600)
 	top.add_child(title)
 	for room in main.ROOMS:
 		_add_tab(top, room.id, room.name)
@@ -63,8 +62,7 @@ func setup(the_hud: CanvasLayer, mode: Node3D) -> void:
 	sell_button.toggle_mode = true
 	sell_button.focus_mode = Control.FOCUS_NONE
 	sell_button.tooltip_text = "Click placed items to sell them for half price.\nRight-click or Esc to stop. (Hover an item and press X works too.)"
-	hud._style_button(sell_button)
-	sell_button.add_theme_font_size_override("font_size", 15)
+	sell_button.add_theme_font_size_override("font_size", 14)
 	sell_button.toggled.connect(func(on: bool): build_mode.set_sell_mode(on))
 	build_mode.sell_mode_changed.connect(func(on: bool): sell_button.set_pressed_no_signal(on))
 	top.add_child(sell_button)
@@ -85,8 +83,7 @@ func _add_tab(parent: Control, id: String, label: String) -> void:
 	b.text = label
 	b.toggle_mode = true
 	b.focus_mode = Control.FOCUS_NONE
-	hud._style_button(b)
-	b.add_theme_font_size_override("font_size", 15)
+	b.add_theme_font_size_override("font_size", 14)
 	b.pressed.connect(open_tab.bind(id))
 	parent.add_child(b)
 	_tabs[id] = b
@@ -127,9 +124,7 @@ func open_tab(id: String, move_camera := true) -> void:
 		_add_section("Made for the " + room.name if id != "dorm" else "Made for Pillow Mountain", own, order)
 		if not classroom.is_empty():
 			_add_section("Classroom items (Blanket Fort or Cardboard Castle)", classroom, order)
-		var tip: Label = hud._label(13)
-		tip.text = "Lights, comfort, toys, and partition walls are on the Anywhere tab."
-		tip.add_theme_color_override("font_color", Color(hud.INK, 0.6))
+		var tip := Style.label("Lights, comfort, toys, and partition walls are on the Anywhere tab.", 13, 400, Style.INK_SOFT)
 		_body.add_child(tip)
 		if move_camera and main.camera_rig != null:
 			main.camera_rig.focus_on(main.room_center(room))
@@ -156,9 +151,7 @@ func _plural(t: String) -> String:
 func _add_section(title: String, items: Array, order: Array[ItemData]) -> void:
 	if items.is_empty():
 		return
-	var head: Label = hud._label(14)
-	head.text = title
-	head.add_theme_color_override("font_color", Color(hud.INK, 0.75))
+	var head := Style.label(title, 13, 500, Style.INK_SOFT)
 	_body.add_child(head)
 	var flow := HFlowContainer.new()
 	flow.add_theme_constant_override("h_separation", 8)
@@ -170,12 +163,27 @@ func _add_section(title: String, items: Array, order: Array[ItemData]) -> void:
 		b.toggle_mode = true
 		b.focus_mode = Control.FOCUS_NONE
 		b.custom_minimum_size = CARD_SIZE
-		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		b.tooltip_text = _tooltip(d)
-		hud._style_button(b)
-		b.add_theme_font_size_override("font_size", 13)
 		b.pressed.connect(_on_card_pressed.bind(d))
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 6)
+		b.add_child(row)
+		row.add_child(W.ItemIcon.new(d))
+		var col := VBoxContainer.new()
+		col.add_theme_constant_override("separation", -2)
+		col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		col.alignment = BoxContainer.ALIGNMENT_CENTER
+		row.add_child(col)
+		var name_label := Style.label("", 13, 600)
+		name_label.clip_text = true
+		name_label.custom_minimum_size.x = 134
+		col.add_child(name_label)
+		var price_label := Style.label("", 12)
+		col.add_child(price_label)
+		b.set_meta("name_label", name_label)
+		b.set_meta("price_label", price_label)
 		flow.add_child(b)
 		_cards[d] = b
 
@@ -206,12 +214,16 @@ func _refresh_cards() -> void:
 			continue
 		var key := "%d  " % (i + 1) if i < 9 else ""
 		var locked := d.research_ideas > 0 and not GameState.researched.has(d.id)
+		var name_label: Label = b.get_meta("name_label")
+		var price_label: Label = b.get_meta("price_label")
+		name_label.text = key + d.display_name
 		if locked:
-			b.text = "%s%s\nResearch: %d Ideas" % [key, d.display_name, d.research_ideas]
+			price_label.text = "Research: %d Ideas" % d.research_ideas
 			b.disabled = true
 		else:
-			b.text = "%s%s\n%d Giggles" % [key, d.display_name, d.cost]
+			price_label.text = "%d Giggles" % d.cost
 			b.disabled = gig < d.cost
+		b.modulate.a = 0.6 if b.disabled else 1.0
 		b.set_pressed_no_signal(build_mode.holding == d)
 
 
@@ -221,16 +233,14 @@ func _add_room_info(room: Dictionary) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 16)
 	_body.add_child(row)
-	_info_label = hud._label(14)
-	_info_label.text = room.blurb
+	_info_label = Style.label(room.blurb, 14)
 	row.add_child(_info_label)
-	_whimsy_label = hud._label(14)
+	_whimsy_label = Style.label("", 14, 500)
 	_whimsy_label.mouse_filter = Control.MOUSE_FILTER_PASS
 	_whimsy_label.tooltip_text = "Whimsy adds up every item's whimsy in the room.\nBelow 4: bored.  4 to 9: Just Right.  Above 9: too wild to focus."
 	row.add_child(_whimsy_label)
 
-	var needs_head: Label = hud._label(14)
-	needs_head.text = "This room needs:"
+	var needs_head := Style.label("This room needs:", 14, 600)
 	_body.add_child(needs_head)
 	_needs_box = VBoxContainer.new()
 	_needs_box.add_theme_constant_override("separation", 2)
@@ -256,18 +266,13 @@ func _refresh_room_info() -> void:
 		row.add_theme_constant_override("separation", 6)
 		_needs_box.add_child(row)
 		# Check or cross drawn as a shape, so it never relies on color alone.
-		var icon := TextureRect.new()
-		icon.texture = Visuals.badge_texture(got >= want)
-		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		icon.custom_minimum_size = Vector2(18, 18)
-		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		row.add_child(icon)
+		row.add_child(W.Badge.new(got >= want, 18))
 		var link := LinkButton.new()
 		link.text = "%s  %d/%d  (%s)" % [data.display_name if data else String(need.item), mini(got, want), want, need.for]
 		link.underline = LinkButton.UNDERLINE_MODE_ON_HOVER
 		link.focus_mode = Control.FOCUS_NONE
-		link.add_theme_color_override("font_color", hud.INK)
-		link.add_theme_color_override("font_hover_color", hud.INK)
+		link.add_theme_color_override("font_color", Style.INK)
+		link.add_theme_color_override("font_hover_color", Style.INK)
 		link.add_theme_font_size_override("font_size", 14)
 		link.tooltip_text = "Click to pick it up"
 		if data != null:

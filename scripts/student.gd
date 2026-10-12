@@ -9,6 +9,7 @@ const StudentVisuals := preload("res://scripts/student_visuals.gd")
 
 const NEEDS := ["calm", "fun", "rest"]
 const NEED_NAMES := {"calm": "Calm", "fun": "Fun", "rest": "Rest"}
+const SKILLS := ["bravery", "listening", "silliness"]
 const MAX_NEED := 10
 const LOW_NEED := 3               ## Below this a mood icon shows (Systems doc)
 
@@ -28,6 +29,7 @@ enum State { IDLE, WALKING, USING, HIDING, WANDERING, NAPPING }
 
 var data: StudentData
 var needs := {}
+var skills := {}                  ## skill -> [solid, fresh] (Systems doc, learning model)
 var state := State.IDLE
 var target_item = null            ## The Placed item they're heading to or using
 var activity := "Looking around"  ## Shown in the HUD and hover hint
@@ -54,6 +56,9 @@ func setup(student_data: StudentData) -> void:
 	name = String(data.display_name)
 	for need in NEEDS:
 		needs[need] = clampi(int(data.start_needs.get(need, 6)), 0, MAX_NEED)
+	for skill in SKILLS:
+		var pts: Array = data.start_skills.get(skill, [0.0, 0.0])
+		skills[skill] = [float(pts[0]), float(pts[1])]
 	body = StudentVisuals.make_body(data)
 	add_child(body)
 	_icon = Sprite3D.new()
@@ -157,8 +162,9 @@ func goal() -> Vector3:
 	return _goal
 
 
-func _physics_process(delta: float) -> void:
-	if not _moving:
+func _physics_process(real_delta: float) -> void:
+	var delta := real_delta * GameState.sim_scale()   # game speed; 0 when paused
+	if not _moving or delta <= 0.0:
 		return
 	var speed := WANDER_SPEED if state == State.WANDERING else WALK_SPEED
 	var step := speed * delta
@@ -282,7 +288,8 @@ func _clear_prop() -> void:
 
 # --- Animation --------------------------------------------------------------------
 
-func _process(delta: float) -> void:
+func _process(real_delta: float) -> void:
+	var delta := real_delta * GameState.sim_scale()
 	_anim_t += delta
 	if is_acting_out():
 		act_out_left -= delta
@@ -291,7 +298,7 @@ func _process(delta: float) -> void:
 			return
 	match state:
 		State.WALKING, State.WANDERING:
-			if _moving:
+			if _moving and not Settings.reduce_motion:
 				# Squash-and-stretch hop while walking.
 				var s := absf(sin(_anim_t * BOB_RATE))
 				body.position.y = s * BOB_HEIGHT
@@ -326,6 +333,8 @@ func _breathe() -> void:
 ## A happy little hop (arriving at an item, feeling better).
 func _hop() -> void:
 	_hop_t = randf_range(2.5, 4.5)
+	if Settings.reduce_motion:
+		return
 	_hopping = true
 	var tw := create_tween()
 	tw.tween_property(body, "position:y", 0.25, 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
@@ -333,6 +342,34 @@ func _hop() -> void:
 	tw.tween_property(body, "scale", Vector3(1.15, 0.85, 1.15), 0.06)
 	tw.tween_property(body, "scale", Vector3.ONE, 0.3).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
 	tw.tween_callback(func(): _hopping = false)
+
+
+# --- Skills -----------------------------------------------------------------------
+
+func solid(skill: String) -> float:
+	return skills.get(skill, [0.0, 0.0])[0]
+
+
+func fresh(skill: String) -> float:
+	return skills.get(skill, [0.0, 0.0])[1]
+
+
+func total(skill: String) -> float:
+	return solid(skill) + fresh(skill)
+
+
+## What the skill counts as in a Dream Test: fresh points count half (Systems doc).
+func effective(skill: String) -> float:
+	return solid(skill) + fresh(skill) * 0.5
+
+
+## The student's strongest skill (for the Students list).
+func best_skill() -> String:
+	var best := SKILLS[0]
+	for s in SKILLS:
+		if total(s) > total(best):
+			best = s
+	return best
 
 
 # --- Words ------------------------------------------------------------------------

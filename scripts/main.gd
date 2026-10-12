@@ -6,12 +6,13 @@ extends Node3D
 
 const CameraRig := preload("res://scripts/camera_rig.gd")
 const BuildMode := preload("res://scripts/build_mode.gd")
-const BuildHud := preload("res://scripts/build_hud.gd")
+const Hud := preload("res://scripts/ui/hud.gd")
 const Students := preload("res://scripts/students.gd")
 
 const WALL_HEIGHT := 1.2
 const WALL_THICKNESS := 0.2
 const DOOR_WIDTH := 2          ## Tiles; every room has a doorway in its front wall
+const LETTERS_DIR := "res://data/letters"
 const GROUND_SIZE := Vector2(44, 30)
 
 ## The three demo rooms. rect is in grid tiles: Rect2i(x, z, width, depth).
@@ -65,11 +66,21 @@ var camera_rig: Node3D
 var build_mode: Node3D
 var students: Node3D
 var hud: CanvasLayer
+var letters: Array[LetterData] = []  ## Every child's letter in the demo (data/letters/)
 var wall_rects: Array[Rect2] = []   ## Every wall's floor outline (x, z); students walk around them
 var _grid_shader: Shader
 
 
 func _ready() -> void:
+	GameState.reset()
+	UI.reset()
+	for file in ResourceLoader.list_directory(LETTERS_DIR):
+		file = file.trim_suffix(".remap")
+		if file.ends_with(".tres"):
+			var l = load(LETTERS_DIR.path_join(file))
+			if l is LetterData:
+				letters.append(l)
+	letters.sort_custom(func(a: LetterData, b: LetterData): return a.arrives_day < b.arrives_day)
 	_grid_shader = Shader.new()
 	_grid_shader.code = GRID_SHADER
 	_build_environment()
@@ -94,11 +105,26 @@ func _ready() -> void:
 	add_child(students)
 	build_mode.students = students
 
-	hud = BuildHud.new()
+	hud = Hud.new()
 	hud.name = "HUD"
 	add_child(hud)
-	hud.setup(build_mode)
-	hud.setup_students(students)
+	hud.setup(self)
+	if not UI.skip_intro:
+		UI.open_screen("title")
+
+
+## New Game from the title screen: Leo's letter arrives a moment later.
+func start_new_game() -> void:
+	camera_rig.rotation.y = 0.0
+	await get_tree().create_timer(0.8).timeout
+	if not letters.is_empty() and GameState.accepted_letters.is_empty() and not UI.blocking():
+		hud.screens.show_letter(letters[0])
+
+
+## Pause screen's Quit to Title: start the scene over (the title screen opens on load).
+func quit_to_title() -> void:
+	UI.reset()
+	get_tree().reload_current_scene()
 
 
 # --- Rooms --------------------------------------------------------------------

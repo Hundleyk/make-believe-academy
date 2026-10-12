@@ -12,5 +12,15 @@ start_needs = {
 "fun": 5,
 "rest": 3
 }
+start_skills = {
+"bravery": [0.7, 0.2],
+"listening": [0.3, 0.1],
+"silliness": [1.8, 0.6]
+}
+personality = "Goofy"
+quirk = "Too much energy"
+quirk_text = "Fun drains faster, Rest drains slower. Learns best hands-on."
+learning_pace = "Steady"
+horns = false
 gray_color = Color(0.827, 0.624, 0.408, 1)
 gray_height = 1.15

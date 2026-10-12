@@ -87,7 +87,8 @@ func _ready() -> void:
 
 # --- Periods ----------------------------------------------------------------------
 
-func _process(delta: float) -> void:
+func _process(real_delta: float) -> void:
+	var delta := real_delta * GameState.sim_scale()   # game speed; 0 when paused
 	_update_hover()
 	if not nav_ready:
 		return
@@ -153,10 +154,24 @@ func changes_for(s: Node3D, active_combos: Array = []) -> Dictionary:
 		out[need] = []
 		if SCHOOL_DAY_DRIFT.get(need, 0) != 0:
 			out[need].append(["school day", SCHOOL_DAY_DRIFT[need]])
+	var near_nightlight := false
 	for p in items_in_range(s):
+		if p.data.tags.has("nightlight"):
+			near_nightlight = true
 		for need in p.data.need_mods:
 			if out.has(need):
 				out[need].append([p.data.display_name, int(p.data.need_mods[need])])
+	# Quirks bend needs (Systems doc, Quirks).
+	match s.data.quirk:
+		"Afraid of the dark":
+			if not near_nightlight:
+				out.calm.append(["afraid of the dark, no nightlight", -1])
+		"Too much energy":
+			out.fun.append(["too much energy", -1])
+			out.rest.append(["too much energy", 1])
+	for o in students:
+		if o != s and o.data.quirk == "Can't stop raining" and o.global_position.distance_to(s.global_position) <= 1.5:
+			out.fun.append(["rained on by " + o.data.display_name, -1])
 	for hit in active_combos:
 		var near := false
 		for p in hit.items:
@@ -333,6 +348,33 @@ func _on_act_out_finished(s: Node3D) -> void:
 	choose_target(s)
 
 
+## Tooltip text for a need: every item and combo that raises it, best first.
+func what_raises(need: String) -> String:
+	var need_name: String = Student.NEED_NAMES.get(need, need.capitalize())
+	var rows := []
+	for d in build_mode.catalog:
+		var amount := int(d.need_mods.get(need, 0))
+		if amount > 0:
+			var where: String = d.room_rule_text()
+			var note: String = "  (research first)" if d.research_ideas > 0 else ""
+			rows.append([amount, "  %s  +%d  ·  %d Giggles  ·  %s%s" % [d.display_name, amount, d.cost, where, note]])
+	rows.sort_custom(func(a, b): return a[0] > b[0])
+	var lines := ["What raises %s (students standing in the item's ring get it each period):" % need_name]
+	for r in rows:
+		lines.append(r[1])
+	if rows.is_empty():
+		lines.append("  Nothing yet")
+	var combo_lines := []
+	for c in build_mode.combos:
+		var amount := int(c.need_mods.get(need, 0))
+		if amount > 0:
+			combo_lines.append("  %s  +%d" % [c.display_name, amount] if GameState.discovered_combos.has(c.id) else "  A combo you haven't found yet  +%d" % amount)
+	if not combo_lines.is_empty():
+		lines.append("Combos:")
+		lines.append_array(combo_lines)
+	return "\n".join(lines)
+
+
 ## Test helper: empty one need right now and act it out (C, F, Z while hovering).
 func empty_need(s: Node3D, need: String) -> void:
 	if s.is_acting_out():
@@ -435,7 +477,7 @@ func _on_nav_updated() -> void:
 
 func _update_hover() -> void:
 	var found: Node3D = null
-	if build_mode.holding == null and build_mode.debug_hover_tile == null and camera_rig != null:
+	if build_mode.holding == null and build_mode.debug_hover_tile == null and camera_rig != null and not UI.blocking():
 		var vp := get_viewport()
 		if vp.gui_get_hovered_control() == null:
 			var mouse := vp.get_mouse_position()
@@ -458,7 +500,7 @@ var debug_hovered: Node3D = null   # tests set this instead of using the mouse
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if hovered == null or not (event is InputEventKey) or not event.pressed or event.echo:
+	if UI.blocking() or hovered == null or not (event is InputEventKey) or not event.pressed or event.echo:
 		return
 	match event.physical_keycode:
 		KEY_C:

@@ -402,6 +402,14 @@ func _check_new_combos(p: Placed) -> void:
 				combo.bonus_text + "\n" + combo.flavor_text + "\nThe Department sends a %d-Giggle discovery grant." % COMBO_GRANT)
 
 
+## Remove every placed item with no refund (loading a save starts from an empty Academy).
+func clear_all() -> void:
+	for p in placed.duplicate():
+		_remove(p)
+		p.node.queue_free()
+	occupancy.clear()
+
+
 ## Placed items whose footprint starts inside this room.
 func items_in_room(room_id: String) -> Array[Placed]:
 	var out: Array[Placed] = []
@@ -467,7 +475,7 @@ func _process(_delta: float) -> void:
 func _tile_under_mouse() -> Variant:
 	if debug_hover_tile != null:
 		return debug_hover_tile
-	if get_viewport().gui_get_hovered_control() != null:
+	if UI.blocking() or get_viewport().gui_get_hovered_control() != null:
 		return null   # the mouse is over the catalog or another panel
 	var hit = camera_rig.screen_to_ground(get_viewport().get_mouse_position())
 	if hit == null:
@@ -566,21 +574,28 @@ func _set_hint(text: String) -> void:
 # --- Input ----------------------------------------------------------------------
 
 func _unhandled_input(event: InputEvent) -> void:
+	if UI.blocking():
+		return   # a menu or a letter is open
 	if event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		_dragging = false
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			_on_left_click()
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
-			if holding != null:
+			# Right-click backs out one step (UI System doc): selling, holding, then panels.
+			if sell_mode:
+				set_sell_mode(false)
+			elif holding != null:
 				stop_holding()
-			elif _hovered != null:
-				sell(_hovered)
+			else:
+				UI.back()
 	elif event is InputEventKey and event.pressed and not event.echo:
 		match event.physical_keycode:
 			KEY_R:
 				rotate_held()
 			KEY_ESCAPE:
+				if holding == null and not sell_mode:
+					return   # nothing to back out of here; the HUD handles it
 				set_sell_mode(false)
 				stop_holding()
 			KEY_X, KEY_DELETE:
@@ -652,6 +667,8 @@ func drag_to(tile: Variant) -> void:
 # --- Juice ----------------------------------------------------------------------
 
 func _wobble(body: Node3D) -> void:
+	if Settings.reduce_motion:
+		return
 	body.position.y = WOBBLE_DROP
 	body.scale = Vector3.ONE
 	var tw := body.create_tween()   # dies with the item if it's sold mid-wobble

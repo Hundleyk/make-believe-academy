@@ -12,5 +12,15 @@ start_needs = {
 "fun": 7,
 "rest": 6
 }
+start_skills = {
+"bravery": [1.5, 0.5],
+"listening": [0.4, 0.2],
+"silliness": [0.2, 0.0]
+}
+personality = "Bold"
+quirk = "Afraid of the dark"
+quirk_text = "Calm -1 each period without a nightlight in reach. Learns better in bright rooms."
+learning_pace = "Steady"
+horns = true
 gray_color = Color(0.486, 0.682, 0.416, 1)
 gray_height = 0.9

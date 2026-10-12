@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="LetterData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/letter_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"leo"
+child = "Leo"
+age = 6
+neighborhood = "Maple Street"
+featured = true
+arrives_day = 1
+body = "I'm Leo. I'm 6. My new room is too dark and the dark is too big. Can you send somebody who isn't scared of it? Because I am."
+ps = "P.S. The closet makes a breathing noise at night. Mom says it's the pipes."
+skill = "bravery"
+level = 3
+seems = "Worried"
+best_trait = "Bold"
+pays_great = 150
+pays_okay = 80
+dream_day = 7
+course = "Monster Defense"
+notes = Array[String](["Castles are brave. Can you build one?", "The closet monster needs a home at the castle.", "Put a nightlight by the scared one. I know because I need one too.", "Teach Monster Defense!!", "Make somebody brave. Like, brave 3."])

@@ -28,6 +28,11 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	if UI.screen == "title":
+		rotation.y += delta * 0.06   # the title screen slowly turns around the Academy
+		return
+	if UI.blocking():
+		return
 	# Pan relative to the way the camera is facing.
 	var input := Vector2.ZERO
 	if Input.is_physical_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_UP):
@@ -45,7 +50,7 @@ func _process(delta: float) -> void:
 		right.y = 0.0
 		back.y = 0.0
 		var move := right.normalized() * input.x + back.normalized() * input.y
-		position += move * pan_speed * (_zoom / start_zoom) * delta
+		position += move * pan_speed * Settings.camera_speed * (_zoom / start_zoom) * delta
 		position.x = clampf(position.x, bounds.position.x, bounds.end.x)
 		position.z = clampf(position.z, bounds.position.y, bounds.end.y)
 
@@ -64,6 +69,8 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if UI.blocking():
+		return
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			_target_zoom = clampf(_target_zoom - zoom_step, zoom_min, zoom_max)
