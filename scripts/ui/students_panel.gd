@@ -14,8 +14,8 @@ var _refresh := 0.0
 func setup(the_hud: CanvasLayer) -> void:
 	hud = the_hud
 	name = "StudentsPanel"
-	add_theme_stylebox_override("panel", Style.paper_box(16))
-	position = Vector2(20, 96)
+	add_theme_stylebox_override("panel", Style.paper_box(18, 6))
+	position = Vector2(20, 126)
 	custom_minimum_size = Vector2(440, 0)
 	visible = false
 	var col := VBoxContainer.new()
@@ -23,13 +23,15 @@ func setup(the_hud: CanvasLayer) -> void:
 	add_child(col)
 	var head := HBoxContainer.new()
 	col.add_child(head)
-	var title := Style.label("Students", 21, 600)
+	var title := Style.label("Students", 28, 700)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(title)
-	head.add_child(Style.label("%d enrolled" % hud.students.students.size(), 13, 400, Style.INK_SOFT))
+	var enrolled := Style.chip("%d enrolled" % hud.students.students.size(), Style.TAB_TAN, Color(0, 0, 0, 0), 13, 700)
+	enrolled.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	head.add_child(enrolled)
 	for s in hud.students.students:
 		col.add_child(_row(s))
-	var tip := Style.hand_label("Click a student to open their card. Hover a need to see what raises it.", 16, Style.INK_SOFT)
+	var tip := Style.hand_label("Click a student to open their card. Hover a need to see what raises it.", 18, Style.CRAYON_PURPLE)
 	tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	tip.custom_minimum_size.x = 400
 	col.add_child(tip)
@@ -40,10 +42,12 @@ func _row(s: Node3D) -> Control:
 	b.focus_mode = Control.FOCUS_NONE
 	b.toggle_mode = true
 	b.custom_minimum_size = Vector2(408, 74)
-	b.add_theme_stylebox_override("normal", Style.flat_box(Style.PAPER, Style.PAPER_EDGE, 2))
-	b.add_theme_stylebox_override("hover", Style.flat_box(Style.PAPER_DARK, Style.PAPER_EDGE, 2))
-	b.add_theme_stylebox_override("pressed", Style.flat_box(Color("F6E3C8"), Style.INK, 2))
-	b.add_theme_stylebox_override("hover_pressed", Style.flat_box(Color("F6E3C8"), Style.INK, 2))
+	b.custom_minimum_size.y = 84
+	b.add_theme_stylebox_override("normal", Style.card_box(false, true, 0))
+	b.add_theme_stylebox_override("hover", Style.card_box(false, true, 0))
+	b.get_theme_stylebox("hover").bg_color = Style.TAB_TAN.lightened(0.12)
+	b.add_theme_stylebox_override("pressed", Style.card_box(true, false, 0))
+	b.add_theme_stylebox_override("hover_pressed", Style.card_box(true, false, 0))
 	b.pressed.connect(func():
 		if UI.card_student == s:
 			UI.close_card()
@@ -54,7 +58,13 @@ func _row(s: Node3D) -> Control:
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 10)
 	b.add_child(row)
-	row.add_child(W.Portrait.new(s.data.gray_color, Vector2(40, 50), false, s.data.horns))
+	var face := PanelContainer.new()
+	face.add_theme_stylebox_override("panel", Style.flat_box(Style.SKY, Style.PAPER, 3, 28, 4))
+	face.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	face.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	face.clip_contents = true
+	face.add_child(W.Portrait.new(s.data.gray_color, Vector2(44, 48), false, s.data.horns))
+	row.add_child(face)
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 2)
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -63,13 +73,13 @@ func _row(s: Node3D) -> Control:
 	var top := HBoxContainer.new()
 	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(top)
-	var name_label := Style.label(s.data.display_name, 17, 600)
+	var name_label := Style.label(s.data.display_name, 19, 700)
 	top.add_child(name_label)
-	var kind := Style.label("  %s · %s" % [s.data.kind, s.data.personality], 13, 400, Style.INK_SOFT)
+	var kind := Style.hand_label("  %s · %s" % [s.data.kind, s.data.personality], 19, Style.INK_SOFT)
 	kind.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(kind)
 	var chip := PanelContainer.new()
-	chip.add_theme_stylebox_override("panel", Style.flat_box(Style.PAPER_DARK, Color(0, 0, 0, 0), 0, 6, 3))
+	chip.add_theme_stylebox_override("panel", Style.flat_box(Style.PAPER, Color(0, 0, 0, 0), 0, 8, 3))
 	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var skill_label := Style.label("", 12, 500)
 	chip.add_child(skill_label)

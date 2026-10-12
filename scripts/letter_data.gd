@@ -13,6 +13,8 @@ extends Resource
 @export_multiline var ps := ""               ## The P.S. that hints at the hidden need
 @export var skill := "bravery"               ## bravery, listening, silliness
 @export var level := 3
+@export var problem := ""                   ## The form's PROBLEM line, short ("room too dark")
+@export var wants := ""                     ## The form's NEEDS line, in the child's words ("someone brave")
 @export var seems := ""                      ## Personality hint on the form (Worried, Shy, Bouncy)
 @export var best_trait := ""                 ## The friend personality that pairs well
 @export var pays_great := 150

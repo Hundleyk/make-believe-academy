@@ -1,10 +1,12 @@
 extends PanelContainer
-## The Build menu (bottom right). One tab per room plus "Anywhere", like Two Point's room
-## catalogs and Let's School's furniture tabs:
+## The Build menu (mockup 07, "Building in the Cardboard Castle"): a paper sheet above the
+## tab bar with one tab per room plus "Anywhere", like Two Point's room catalogs and
+## Let's School's furniture tabs:
 ##   - A room tab lists the items made for that room, then classroom items (Fort and Castle),
 ##     with a "This room needs" checklist and the room's whimsy score on top.
 ##   - "Anywhere" lists items that go in any room, grouped by type.
-## Picking a room tab glides the camera to that room. Keys 1-9 pick from the open tab.
+## Big item cards show a thumbnail, price, size, and what it does. Picking a room tab glides
+## the camera to that room. Keys 1-9 pick from the open tab.
 
 const Style := preload("res://scripts/ui/ui_style.gd")
 const W := preload("res://scripts/ui/widgets.gd")
@@ -13,8 +15,9 @@ const ANYWHERE := "any"
 const START_TAB := "castle"
 ## Order of the type groups on the Anywhere tab.
 const TYPE_ORDER := ["Structure", "Light", "Comfort", "Fun", "Decor", "Regulation"]
-const CARD_SIZE := Vector2(184, 48)   ## Name and price; hover a card for its effect
-const MENU_WIDTH := 600.0
+const CARD_SIZE := Vector2(176, 226)
+const MENU_WIDTH := 1000.0
+const NEED_LABELS := {"calm": "Calm", "fun": "Fun", "rest": "Rest"}
 
 var hud: CanvasLayer
 var build_mode: Node3D
@@ -26,9 +29,12 @@ var sell_button: Button
 var _tabs := {}          # tab id -> Button
 var _cards := {}         # ItemData -> Button (only the open tab's)
 var _body: VBoxContainer
-var _needs_box: VBoxContainer
+var _room_title: Label
+var _needs_box: HFlowContainer
 var _info_label: Label
 var _whimsy_label: Label
+var _card_row: HBoxContainer
+var _footer: Label
 
 
 func setup(the_hud: CanvasLayer, mode: Node3D) -> void:
@@ -36,57 +42,91 @@ func setup(the_hud: CanvasLayer, mode: Node3D) -> void:
 	build_mode = mode
 	main = mode.main
 	students = mode.students
-	add_theme_stylebox_override("panel", Style.paper_box(16))
+	var sb := Style.paper_box(0, 6)
+	sb.content_margin_left = 26
+	sb.content_margin_right = 26
+	sb.content_margin_top = 18
+	sb.content_margin_bottom = 14
+	add_theme_stylebox_override("panel", sb)
 	visible = false
-	set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 20)
-	grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	custom_minimum_size.x = MENU_WIDTH
+	set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE, 0)
+	offset_bottom = -112
+	grow_horizontal = Control.GROW_DIRECTION_BOTH
 	grow_vertical = Control.GROW_DIRECTION_BEGIN
 
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 8)
+	col.add_theme_constant_override("separation", 10)
 	add_child(col)
 
 	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", 6)
+	top.add_theme_constant_override("separation", 8)
 	col.add_child(top)
-	var title := Style.label("Build  ", 21, 600)
-	top.add_child(title)
+	var title_col := VBoxContainer.new()
+	title_col.add_theme_constant_override("separation", -4)
+	title_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(title_col)
+	title_col.add_child(Style.caps("Building in", 13))
+	_room_title = Style.label("", 30, 700)
+	title_col.add_child(_room_title)
 	for room in main.ROOMS:
 		_add_tab(top, room.id, room.name)
 	_add_tab(top, ANYWHERE, "Anywhere")
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	top.add_child(spacer)
-	sell_button = Button.new()
-	sell_button.text = "Sell items"
+	var sep := VSeparator.new()
+	sep.add_theme_constant_override("separation", 10)
+	top.add_child(sep)
+	sell_button = Style.button("Sell", 15, false, "sell")
 	sell_button.toggle_mode = true
-	sell_button.focus_mode = Control.FOCUS_NONE
+	sell_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	sell_button.tooltip_text = "Click placed items to sell them for half price.\nRight-click or Esc to stop. (Hover an item and press X works too.)"
-	sell_button.add_theme_font_size_override("font_size", 14)
 	sell_button.toggled.connect(func(on: bool): build_mode.set_sell_mode(on))
 	build_mode.sell_mode_changed.connect(func(on: bool): sell_button.set_pressed_no_signal(on))
 	top.add_child(sell_button)
+	var close := Style.button("Close", 15, false, "close")
+	close.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	close.tooltip_text = "Close the Build menu  (B)"
+	close.pressed.connect(UI.close_drawer)
+	top.add_child(close)
 
 	_body = VBoxContainer.new()
-	_body.add_theme_constant_override("separation", 6)
-	_body.custom_minimum_size.x = MENU_WIDTH
+	_body.add_theme_constant_override("separation", 8)
 	col.add_child(_body)
+
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(MENU_WIDTH - 52, CARD_SIZE.y + 22)
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	col.add_child(scroll)
+	_card_row = HBoxContainer.new()
+	_card_row.add_theme_constant_override("separation", 14)
+	scroll.add_child(_card_row)
+
+	_footer = Style.label("", 15, 500, Style.INK_SOFT)
+	col.add_child(_footer)
+	add_child(Style.tape(MENU_WIDTH / 2.0 - 60, -2, Style.WASHI_BLUE, 120))
 
 	build_mode.holding_changed.connect(func(_d): _refresh_cards())
 	build_mode.layout_changed.connect(_refresh_room_info)
 	GameState.giggles_changed.connect(func(_g): _refresh_cards())
 	open_tab(START_TAB, false)
+	set_hint(build_mode._hint)
 
 
 func _add_tab(parent: Control, id: String, label: String) -> void:
-	var b := Button.new()
-	b.text = label
-	b.toggle_mode = true
-	b.focus_mode = Control.FOCUS_NONE
-	b.add_theme_font_size_override("font_size", 14)
+	var b := Style.tab_button(label, 15)
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	b.pressed.connect(open_tab.bind(id))
 	parent.add_child(b)
 	_tabs[id] = b
+
+
+## The footer line: build mode's hint, or the controls when nothing's going on.
+func set_hint(t: String) -> void:
+	if _footer == null:
+		return
+	if t == "" or t.begins_with("Pick an item"):
+		_footer.text = "Click a card to pick it up   ·   Click to place   ·   R to rotate   ·   Right-click to cancel"
+	else:
+		_footer.text = t.replace("\n", "   ·   ")
 
 
 ## Switch tabs. Room tabs glide the camera to that room.
@@ -96,11 +136,14 @@ func open_tab(id: String, move_camera := true) -> void:
 		_tabs[t].set_pressed_no_signal(t == id)
 	for c in _body.get_children():
 		c.queue_free()
+	for c in _card_row.get_children():
+		c.queue_free()
 	_cards.clear()
 	_needs_box = null
 	var order: Array[ItemData] = []
 
 	if id == ANYWHERE:
+		_room_title.text = "Anywhere in the Academy"
 		var groups := {}
 		for d in build_mode.catalog:
 			if _goes_anywhere(d):
@@ -108,11 +151,14 @@ func open_tab(id: String, move_camera := true) -> void:
 				if not groups.has(t):
 					groups[t] = []
 				groups[t].append(d)
+		var line := Style.hand_label("Walls, lights, comfort, and toys go in any room.", 20, Style.CRAYON_PURPLE)
+		_body.add_child(line)
 		for t in TYPE_ORDER:
 			if groups.has(t):
-				_add_section(_plural(t), groups[t], order)
+				_add_cards(_plural(t), groups[t], order)
 	else:
 		var room: Dictionary = main.room_by_id(id)
+		_room_title.text = room.name if room.id == "dorm" else "The " + room.name
 		_add_room_info(room)
 		var own: Array = []
 		var classroom: Array = []
@@ -121,11 +167,8 @@ func open_tab(id: String, move_camera := true) -> void:
 				own.append(d)
 			elif d.allowed_rooms.has("classroom") and id in ["fort", "castle"]:
 				classroom.append(d)
-		_add_section("Made for the " + room.name if id != "dorm" else "Made for Pillow Mountain", own, order)
-		if not classroom.is_empty():
-			_add_section("Classroom items (Blanket Fort or Cardboard Castle)", classroom, order)
-		var tip := Style.label("Lights, comfort, toys, and partition walls are on the Anywhere tab.", 13, 400, Style.INK_SOFT)
-		_body.add_child(tip)
+		_add_cards("Made for this room", own, order)
+		_add_cards("Classroom items", classroom, order)
 		if move_camera and main.camera_rig != null:
 			main.camera_rig.focus_on(main.room_center(room))
 
@@ -148,44 +191,102 @@ func _plural(t: String) -> String:
 			return t
 
 
-func _add_section(title: String, items: Array, order: Array[ItemData]) -> void:
+## A group of cards in the scrolling row, with a small caps label on a divider card.
+func _add_cards(title: String, items: Array, order: Array[ItemData]) -> void:
 	if items.is_empty():
 		return
-	var head := Style.label(title, 13, 500, Style.INK_SOFT)
-	_body.add_child(head)
-	var flow := HFlowContainer.new()
-	flow.add_theme_constant_override("h_separation", 8)
-	flow.add_theme_constant_override("v_separation", 8)
-	_body.add_child(flow)
+	var divider := VBoxContainer.new()
+	divider.alignment = BoxContainer.ALIGNMENT_CENTER
+	divider.custom_minimum_size = Vector2(28, CARD_SIZE.y)
+	var l := Style.caps(title, 12)
+	l.rotation_degrees = -90
+	l.position = Vector2(4, CARD_SIZE.y - 10)
+	var holder := Control.new()
+	holder.custom_minimum_size = Vector2(24, CARD_SIZE.y)
+	holder.add_child(l)
+	_card_row.add_child(holder)
 	for d in items:
 		order.append(d)
-		var b := Button.new()
-		b.toggle_mode = true
-		b.focus_mode = Control.FOCUS_NONE
-		b.custom_minimum_size = CARD_SIZE
-		b.tooltip_text = _tooltip(d)
-		b.pressed.connect(_on_card_pressed.bind(d))
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 8)
-		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 6)
-		b.add_child(row)
-		row.add_child(W.ItemIcon.new(d))
-		var col := VBoxContainer.new()
-		col.add_theme_constant_override("separation", -2)
-		col.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		col.alignment = BoxContainer.ALIGNMENT_CENTER
-		row.add_child(col)
-		var name_label := Style.label("", 13, 600)
-		name_label.clip_text = true
-		name_label.custom_minimum_size.x = 134
-		col.add_child(name_label)
-		var price_label := Style.label("", 12)
-		col.add_child(price_label)
-		b.set_meta("name_label", name_label)
-		b.set_meta("price_label", price_label)
-		flow.add_child(b)
-		_cards[d] = b
+		_card_row.add_child(_card(d))
+
+
+func _card(d: ItemData) -> Button:
+	var b := Button.new()
+	b.toggle_mode = true
+	b.focus_mode = Control.FOCUS_NONE
+	b.custom_minimum_size = CARD_SIZE
+	b.tooltip_text = _tooltip(d)
+	b.add_theme_stylebox_override("normal", Style.card_box(false, false, 10))
+	b.add_theme_stylebox_override("hover", Style.card_box(false, false, 10))
+	b.get_theme_stylebox("hover").bg_color = Color("FFFDF5")
+	b.add_theme_stylebox_override("pressed", Style.card_box(true, false, 10))
+	b.add_theme_stylebox_override("hover_pressed", Style.card_box(true, false, 10))
+	b.add_theme_stylebox_override("disabled", Style.card_box(false, false, 10))
+	b.pressed.connect(_on_card_pressed.bind(d))
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 6)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 12)
+	col.offset_bottom = -16
+	b.add_child(col)
+	var thumb := PanelContainer.new()
+	thumb.add_theme_stylebox_override("panel", Style.flat_box(d.gray_color.lightened(0.55), d.gray_color.lightened(0.2), 3, 10, 6))
+	thumb.custom_minimum_size = Vector2(0, 92)
+	thumb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(thumb)
+	var icon := W.ItemIcon.new(d)
+	icon.custom_minimum_size = Vector2(76, 76)
+	icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	thumb.add_child(icon)
+	var key := Style.label("", 13, 700, Style.INK_SOFT)
+	key.position = Vector2(8, 4)
+	var ko := Style.overlay()
+	ko.add_child(key)
+	thumb.add_child(ko)
+	var name_label := Style.label(d.display_name, 16, 600)
+	name_label.clip_text = true
+	name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	col.add_child(name_label)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 5)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(row)
+	var coin := W.Coin.new(18, false)
+	coin.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(coin)
+	var price_label := Style.label("", 16, 700)
+	price_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(price_label)
+	row.add_child(Style.chip("%dx%d" % [d.footprint.x, d.footprint.y], Style.PAPER_DARK, Style.PAPER_EDGE, 12))
+	var chips := HBoxContainer.new()
+	chips.add_theme_constant_override("separation", 4)
+	chips.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(chips)
+	for e in effect_chips(d).slice(0, 2):
+		chips.add_child(Style.chip(e, Style.MINT, Style.OK_DEEP, 12, 600, Style.OK_DEEP.darkened(0.3)))
+	b.set_meta("name_label", name_label)
+	b.set_meta("price_label", price_label)
+	b.set_meta("key_label", key)
+	_cards[d] = b
+	return b
+
+
+## Short effect chips for a card: "+2 Calm", "+1 Fun", or what kind of thing it is.
+static func effect_chips(d: ItemData) -> Array:
+	var out := []
+	for need in d.need_mods:
+		var v: int = int(d.need_mods[need])
+		if v != 0:
+			out.append("%s%d %s" % ["+" if v > 0 else "", v, NEED_LABELS.get(need, String(need).capitalize())])
+	if d.unlocks_course != "":
+		out.append("Teaches " + d.unlocks_course.replace("_", " ").capitalize())
+	if out.is_empty() and not d.focus_mods.is_empty():
+		out.append("Helps focus")
+	if out.is_empty() and d.whimsy != 0:
+		out.append("%s%d Whimsy" % ["+" if d.whimsy > 0 else "", d.whimsy])
+	if out.is_empty():
+		out.append(d.type if d.type != "" else "Decor")
+	return out
 
 
 func _tooltip(d: ItemData) -> String:
@@ -212,18 +313,18 @@ func _refresh_cards() -> void:
 		var b: Button = _cards.get(d)
 		if b == null or not is_instance_valid(b):
 			continue
-		var key := "%d  " % (i + 1) if i < 9 else ""
 		var locked := d.research_ideas > 0 and not GameState.researched.has(d.id)
-		var name_label: Label = b.get_meta("name_label")
 		var price_label: Label = b.get_meta("price_label")
-		name_label.text = key + d.display_name
+		var key_label: Label = b.get_meta("key_label")
+		key_label.text = str(i + 1) if i < 9 else ""
 		if locked:
-			price_label.text = "Research: %d Ideas" % d.research_ideas
+			price_label.text = "%d Ideas" % d.research_ideas
+			b.tooltip_text = "Locked: research it for %d Ideas (the research board arrives in M3).\n\n%s" % [d.research_ideas, _tooltip(d)]
 			b.disabled = true
 		else:
-			price_label.text = "%d Giggles" % d.cost
+			price_label.text = str(d.cost)
 			b.disabled = gig < d.cost
-		b.modulate.a = 0.6 if b.disabled else 1.0
+		b.modulate.a = 0.55 if b.disabled else 1.0
 		b.set_pressed_no_signal(build_mode.holding == d)
 
 
@@ -231,20 +332,32 @@ func _refresh_cards() -> void:
 
 func _add_room_info(room: Dictionary) -> void:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 16)
+	row.add_theme_constant_override("separation", 12)
 	_body.add_child(row)
-	_info_label = Style.label(room.blurb, 14)
+	_info_label = Style.hand_label(room.blurb, 20, Style.CRAYON_PURPLE)
+	_info_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(_info_label)
-	_whimsy_label = Style.label("", 14, 500)
-	_whimsy_label.mouse_filter = Control.MOUSE_FILTER_PASS
-	_whimsy_label.tooltip_text = "Whimsy adds up every item's whimsy in the room.\nBelow 4: bored.  4 to 9: Just Right.  Above 9: too wild to focus."
-	row.add_child(_whimsy_label)
+	var whimsy := PanelContainer.new()
+	var wsb := Style.flat_box(Style.LAVENDER, Color(0, 0, 0, 0), 0, 10, 0)
+	wsb.content_margin_left = 10
+	wsb.content_margin_right = 10
+	wsb.content_margin_top = 3
+	wsb.content_margin_bottom = 3
+	whimsy.add_theme_stylebox_override("panel", wsb)
+	whimsy.tooltip_text = "Whimsy adds up every item's whimsy in the room.\nBelow 4: bored.  4 to 9: Just Right.  Above 9: too wild to focus."
+	whimsy.mouse_filter = Control.MOUSE_FILTER_PASS
+	_whimsy_label = Style.label("", 14, 600)
+	whimsy.add_child(_whimsy_label)
+	row.add_child(whimsy)
 
-	var needs_head := Style.label("This room needs:", 14, 600)
-	_body.add_child(needs_head)
-	_needs_box = VBoxContainer.new()
-	_needs_box.add_theme_constant_override("separation", 2)
-	_body.add_child(_needs_box)
+	var needs_row := HBoxContainer.new()
+	needs_row.add_theme_constant_override("separation", 10)
+	_body.add_child(needs_row)
+	needs_row.add_child(Style.caps("This room needs", 12))
+	_needs_box = HFlowContainer.new()
+	_needs_box.add_theme_constant_override("h_separation", 16)
+	_needs_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	needs_row.add_child(_needs_box)
 
 
 func _refresh_room_info() -> void:
@@ -263,18 +376,19 @@ func _refresh_room_info() -> void:
 		var got: int = have.get(need.item, 0)
 		var data := _item(need.item)
 		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 6)
+		row.add_theme_constant_override("separation", 5)
 		_needs_box.add_child(row)
 		# Check or cross drawn as a shape, so it never relies on color alone.
 		row.add_child(W.Badge.new(got >= want, 18))
 		var link := LinkButton.new()
-		link.text = "%s  %d/%d  (%s)" % [data.display_name if data else String(need.item), mini(got, want), want, need.for]
+		link.text = "%s  %d/%d" % [data.display_name if data else String(need.item), mini(got, want), want]
 		link.underline = LinkButton.UNDERLINE_MODE_ON_HOVER
 		link.focus_mode = Control.FOCUS_NONE
 		link.add_theme_color_override("font_color", Style.INK)
 		link.add_theme_color_override("font_hover_color", Style.INK)
-		link.add_theme_font_size_override("font_size", 14)
-		link.tooltip_text = "Click to pick it up"
+		link.add_theme_font_override("font", Style.font(500))
+		link.add_theme_font_size_override("font_size", 15)
+		link.tooltip_text = "For %s. Click to pick one up." % need.for
 		if data != null:
 			link.pressed.connect(func(): build_mode.start_holding(data))
 		row.add_child(link)

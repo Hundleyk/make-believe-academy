@@ -65,7 +65,19 @@ func discover_combo(combo: ComboData) -> bool:
 	return true
 
 
+## Time played in this school (seconds, not counting menus), and when it was last saved.
+var play_seconds := 0.0
+var last_saved_at := 0                 ## Unix time; 0 = never saved
+
+
+func _process(delta: float) -> void:
+	if not moment_pause:
+		play_seconds += delta
+
+
 func reset() -> void:
+	play_seconds = 0.0
+	last_saved_at = 0
 	giggles = STARTING_GIGGLES
 	discovered_combos.clear()
 	researched.clear()

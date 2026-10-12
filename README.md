@@ -7,17 +7,22 @@ Godot Project Manager → **Import** → pick `project.godot` in this folder →
 
 ## Starting
 The game opens on the **title screen**: New Game, Continue (your newest save), Load Game, Settings, Quit.
-New Game brings Leo's letter: accept it to pin his request and start his crayon notes (the objectives, top right).
+New School brings Leo's letter: **Find a Helper** approves it, opens Requests, and clips his notes (the objectives) bottom left.
+
+The look follows the Make-Believe Academy design system (Game_Menus mockups 01-10): cardboard buttons with a lip,
+cream paper forms, washi tape and pins, a navy tab bar.
 
 ## The HUD
-- **Top**: Giggles (left), the clock with Pause, slower/faster, and Menu (center), Kids' Trust hearts (right)
-- **Bottom tabs**: **Build (B)**, Timetable (T, week 4), **Students (P)**, Staff (H, M2), **Requests (R)**
-- **Students** drawer: click a student for their trading card (skills, personality, quirk, could they help Leo?)
-- **Requests** drawer: each child's letter and who could help, ranked Very likely / Maybe / Unlikely with reasons
+- **Top**: Giggles (left), the Term · Day banner with Pause, Faster, and Menu tiles (center), the Kids' Trust meter (right)
+- **Bottom**: Leo's clipped note (left), the tab bar: **Build (B)**, Timetable (T, week 4), **Students (P)**, Staff (H, M2), **Requests (R)**, quick-build tiles of your recent items (right)
+- **Build** menu: one tab per room plus Anywhere; big cards with price, size, and effect chips; Sell and Close
+- **Students** drawer: click a student for their trading card (dot skill bars, personality, quirk, today's diary, could they help Leo?)
+- **Requests**: the Department form and "Who can help Leo?", every student ranked Very likely / Maybe / Unlikely; pick one to see why
 - **Esc** or **right-click** backs out one step: stop holding or selling, close the card, close the drawer, then the pause screen
 - **Space** pauses the students; **[** and **]** change speed
-- **Pause screen** (Esc or Menu): Resume, Save Game, Load Game (3 slots), Settings, Quit to Title
-- **Settings** (saved between sessions): readable font (Atkinson Hyperlegible), UI size, reduce motion, fullscreen, camera speed
+- **Main menu**: Continue, New School, Load School, Settings, Credits, Quit (with a note asking you to stay)
+- **Pause** (Esc or the gear tile): Resume, Save School, Load School (3 slots with a picture of your school), Settings, Main Menu
+- **Settings** (Apply to save): Audio volumes, Video (fullscreen, UI size, reduce motion), Gameplay (readable font, camera speed), Controls (key list)
 
 ## Controls
 - **WASD** or arrow keys: pan the camera
@@ -65,8 +70,8 @@ New Game brings Leo's letter: accept it to pin his request and start his crayon 
 - `scripts/build_mode.gd` is build mode: placing, rotating, selling, combos. Feel numbers
   (wobble, sell refund) are at the top.
 - `scripts/ui/` is the interface: `hud.gd` (the frame), `ui.gd` (autoloaded as `UI`: which drawer is open,
-  toasts, the Esc chain), `ui_style.gd` (colors, fonts, paper boxes: the one file the M4 art pass changes),
-  `widgets.gd` (drawn pieces: hearts, badges, skill bars, portraits, notebook paper, stamps),
+  toasts, the Esc chain), `ui_style.gd` (the design system: colors, fonts, cardboard buttons, tabs, sliders, toggles, chips),
+  `widgets.gd` (drawn pieces: icons, coins, hearts, meters, dot bars, portraits, paper, tape, pins, the seal, stamps),
   `students_panel.gd`, `trading_card.gd`, `requests_panel.gd`, `crayon_notes.gd` (objectives), `screens.gd`
   (title, pause, settings, save/load, loading, the letter).
 - `scripts/settings.gd` is autoloaded as `Settings`; `scripts/save_game.gd` saves to `user://saves/`.

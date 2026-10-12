@@ -1,5 +1,5 @@
 extends Control
-## The objective tracker: a lined note pinned top right, in the child's crayon handwriting
+## The objective tracker: the child's note clipped bottom left (mockups 07-10), in crayon handwriting
 ## (Game Design Doc, Objectives). Done notes get a crayon strike; the next one is live;
 ## later ones stay hidden as "? ? ?". Checks run on the real game state.
 
@@ -28,17 +28,25 @@ func setup(the_hud: CanvasLayer) -> void:
 	hud = the_hud
 	name = "CrayonNotes"
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 0)
-	_paper = W.Notebook.new(26, 40, 22)
-	_paper.custom_minimum_size = Vector2(290, 0)
-	_paper.position = Vector2(-318, 104)
-	_paper.rotation_degrees = -1.2
+	set_anchors_preset(Control.PRESET_FULL_RECT)
+	_paper = W.Notebook.new(30, 46, 20)
+	_paper.custom_minimum_size = Vector2(262, 0)
+	_paper.anchor_top = 1.0
+	_paper.anchor_bottom = 1.0
+	_paper.offset_left = 22
+	_paper.offset_bottom = -18
+	_paper.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_paper.rotation_degrees = -3.0
 	_paper.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(_paper)
 	_lines = VBoxContainer.new()
 	_lines.add_theme_constant_override("separation", 0)
 	_paper.add_child(_lines)
-	_paper.add_child(Style.tape(110, 3))
+	var o := Style.overlay()
+	var clip := W.Paperclip.new(Vector2(22, 52))
+	clip.position = Vector2(-10, -24)
+	o.add_child(clip)
+	_paper.add_child(o)
 	visible = false
 	GameState.letter_accepted.connect(func(l):
 		if letter == null:
@@ -114,14 +122,14 @@ func _draw_notes() -> void:
 	visible = UI.drawer != "requests"
 	for c in _lines.get_children():
 		c.queue_free()
-	_lines.add_child(Style.hand_label("%s's notes" % letter.child, 16, Style.CRAYON_PURPLE))
+	_lines.add_child(Style.hand_label("%s's notes to the Academy" % letter.child, 18, Style.CRAYON_PURPLE))
 	var cur := current_index()
 	for i in letter.notes.size():
 		if i > cur and cur != -1:
 			break
-		var l := Style.hand_label(letter.notes[i], 19, Style.NIGHT)
+		var l := Style.hand_label(letter.notes[i], 21, Style.NIGHT)
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		l.custom_minimum_size.x = 240
+		l.custom_minimum_size.x = 226
 		l.mouse_filter = Control.MOUSE_FILTER_PASS
 		l.tooltip_text = HOW[i] if i < HOW.size() else ""
 		if done[i]:

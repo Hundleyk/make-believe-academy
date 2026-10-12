@@ -12,6 +12,30 @@ static func path(slot: int) -> String:
 	return "%s/slot_%d.json" % [DIR, slot]
 
 
+static func thumb_path(slot: int) -> String:
+	return "%s/slot_%d.png" % [DIR, slot]
+
+
+## The slot's picture of the school, or null.
+static func thumbnail(slot: int) -> Texture2D:
+	if not FileAccess.file_exists(thumb_path(slot)):
+		return null
+	var img := Image.load_from_file(thumb_path(slot))
+	return ImageTexture.create_from_image(img) if img != null else null
+
+
+static func delete(slot: int) -> void:
+	for p in [path(slot), thumb_path(slot)]:
+		if FileAccess.file_exists(p):
+			DirAccess.remove_absolute(p)
+
+
+## "3h 12m" or "14m".
+static func playtime(seconds: float) -> String:
+	var m := int(seconds / 60.0)
+	return "%dh %02dm" % [m / 60, m % 60] if m >= 60 else "%dm" % m
+
+
 static func exists(slot: int) -> bool:
 	return FileAccess.file_exists(path(slot))
 
@@ -38,7 +62,8 @@ static func read_info(slot: int) -> Dictionary:
 	return data if data is Dictionary else {}
 
 
-static func save(main: Node3D, slot: int) -> bool:
+## `picture` (optional) is a screenshot of the school for the Load School card.
+static func save(main: Node3D, slot: int, picture: Image = null) -> bool:
 	DirAccess.make_dir_recursive_absolute(DIR)
 	var bm: Node3D = main.build_mode
 	var st: Node3D = main.students
@@ -55,6 +80,9 @@ static func save(main: Node3D, slot: int) -> bool:
 	var data := {
 		"version": VERSION,
 		"saved_at": int(Time.get_unix_time_from_system()),
+		"school": "Make-Believe Academy",
+		"day": 1,
+		"play_seconds": GameState.play_seconds,
 		"period": st.period,
 		"period_left": st.period_left,
 		"giggles": GameState.giggles,
@@ -71,6 +99,12 @@ static func save(main: Node3D, slot: int) -> bool:
 	if f == null:
 		return false
 	f.store_string(JSON.stringify(data, "  "))
+	f.close()
+	GameState.last_saved_at = int(data.saved_at)
+	if picture != null:
+		var img := picture.duplicate() as Image
+		img.resize(384, int(384.0 * img.get_height() / maxf(img.get_width(), 1.0)), Image.INTERPOLATE_BILINEAR)
+		img.save_png(thumb_path(slot))
 	return true
 
 
@@ -93,6 +127,8 @@ static func load_into(main: Node3D, slot: int) -> bool:
 			bm.place(d, Vector2i(int(it.x), int(it.z)), int(it.rot), false)
 	GameState.giggles = int(data.get("giggles", GameState.STARTING_GIGGLES))
 	GameState.trust = int(data.get("trust", GameState.STARTING_TRUST))
+	GameState.play_seconds = float(data.get("play_seconds", 0.0))
+	GameState.last_saved_at = int(data.get("saved_at", 0))
 	GameState.discovered_combos.clear()
 	for c in data.get("combos", []):
 		GameState.discovered_combos[StringName(c)] = true
