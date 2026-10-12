@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/item_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"calm_down_corner"
+display_name = "Calm-Down Corner"
+type = "Regulation"
+allowed_rooms = PackedStringArray("any")
+footprint = Vector2i(2, 2)
+cost = 70
+radius = 1
+need_mods = {
+"calm": 1
+}
+focus_mods = {}
+whimsy = 0
+tags = PackedStringArray("calm_corner", "soft")
+effect_text = "Spooked students recover faster · Calm +1"
+research_ideas = 2
+gray_color = Color(0.439, 0.588, 0.729, 1)
+gray_shape = "box"
+gray_size = Vector3(1.7, 0.3, 1.7)

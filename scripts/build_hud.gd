@@ -1,6 +1,8 @@
 extends CanvasLayer
-## Placeholder HUD: Giggles counter, students panel, catalog bar, hint line, combo popup.
+## Placeholder HUD: Giggles counter, students panel, Build menu, hint line, combo popup.
 ## Styled as plain paper cards for now; the stationery look and fonts come later.
+
+const BuildMenu := preload("res://scripts/build_menu.gd")
 
 const PAPER := Color("FFF8E7")
 const PAPER_EDGE := Color("DBCBB2")
@@ -16,7 +18,7 @@ var _toast: PanelContainer
 var _toast_title: Label
 var _toast_body: Label
 var _toast_tween: Tween
-var _buttons := {}   # ItemData -> Button
+var build_menu: PanelContainer
 var _root: Control
 var _students: Node3D
 var _period_label: Label
@@ -49,32 +51,11 @@ func setup(mode: Node3D) -> void:
 	help.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	root.add_child(help)
 
-	# Catalog bar, bottom right.
-	var catalog := _paper_panel()
-	catalog.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 16)
-	catalog.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	catalog.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	root.add_child(catalog)
-	var col := VBoxContainer.new()
-	catalog.add_child(col)
-	var title := _label(18)
-	title.text = "Build"
-	col.add_child(title)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-	col.add_child(row)
-	for i in build_mode.catalog.size():
-		var data: ItemData = build_mode.catalog[i]
-		var b := Button.new()
-		b.text = "%d  %s\n%d Giggles" % [i + 1, data.display_name, data.cost]
-		b.tooltip_text = "%s\nGoes in %s." % [data.effect_text, data.room_rule_text()]
-		b.toggle_mode = true
-		b.focus_mode = Control.FOCUS_NONE
-		b.custom_minimum_size = Vector2(118, 58)
-		_style_button(b)
-		b.pressed.connect(_on_item_pressed.bind(data))
-		row.add_child(b)
-		_buttons[data] = b
+	# Build menu, bottom right: one tab per room plus Anywhere.
+	build_menu = BuildMenu.new()
+	build_menu.name = "BuildMenu"
+	root.add_child(build_menu)
+	build_menu.setup(self, build_mode)
 
 	# Hint line, bottom left.
 	var hint_panel := _paper_panel()
@@ -105,7 +86,6 @@ func setup(mode: Node3D) -> void:
 
 	build_mode.hint_changed.connect(func(t: String): _hint_label.text = t)
 	build_mode.toast_requested.connect(show_toast)
-	build_mode.holding_changed.connect(_on_holding_changed)
 	GameState.giggles_changed.connect(_on_giggles_changed)
 	_on_giggles_changed(GameState.giggles)
 
@@ -145,13 +125,17 @@ func setup_students(students: Node3D) -> void:
 		for need in st.NEEDS:
 			var tag := _label(13)
 			tag.text = st.NEED_NAMES[need]
+			tag.mouse_filter = Control.MOUSE_FILTER_PASS
+			tag.mouse_default_cursor_shape = Control.CURSOR_HELP
+			tag.tooltip_text = what_raises(need, st.NEED_NAMES[need])
 			row.add_child(tag)
 			var bar := ProgressBar.new()
 			bar.max_value = st.MAX_NEED
 			bar.show_percentage = false
 			bar.custom_minimum_size = Vector2(46, 12)
 			bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-			bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			bar.mouse_filter = Control.MOUSE_FILTER_PASS
+			bar.tooltip_text = tag.tooltip_text
 			row.add_child(bar)
 			var value := _label(13)
 			value.custom_minimum_size.x = 26
@@ -164,6 +148,32 @@ func setup_students(students: Node3D) -> void:
 		entry["status"] = status
 		_rows.append(entry)
 	_update_students()
+
+
+## Tooltip for a need: every item and combo that raises it, best first.
+func what_raises(need: String, need_name: String) -> String:
+	var rows := []
+	for d in build_mode.catalog:
+		var amount := int(d.need_mods.get(need, 0))
+		if amount > 0:
+			var where: String = d.room_rule_text()
+			var note: String = "  (research first)" if d.research_ideas > 0 else ""
+			rows.append([amount, "  %s  +%d  ·  %d Giggles  ·  %s%s" % [d.display_name, amount, d.cost, where, note]])
+	rows.sort_custom(func(a, b): return a[0] > b[0])
+	var lines := ["What raises %s (students standing in the item's ring get it each period):" % need_name]
+	for r in rows:
+		lines.append(r[1])
+	if rows.is_empty():
+		lines.append("  Nothing yet")
+	var combo_lines := []
+	for c in build_mode.combos:
+		var amount := int(c.need_mods.get(need, 0))
+		if amount > 0:
+			combo_lines.append("  %s  +%d" % [c.display_name, amount] if GameState.discovered_combos.has(c.id) else "  A combo you haven't found yet  +%d" % amount)
+	if not combo_lines.is_empty():
+		lines.append("Combos:")
+		lines.append_array(combo_lines)
+	return "\n".join(lines)
 
 
 func _process(delta: float) -> void:
@@ -218,22 +228,8 @@ func show_toast(title: String, body: String) -> void:
 	_toast_tween.tween_callback(func(): _toast.visible = false)
 
 
-func _on_item_pressed(data: ItemData) -> void:
-	if build_mode.holding == data:
-		build_mode.stop_holding()
-	else:
-		build_mode.start_holding(data)
-
-
-func _on_holding_changed(data: ItemData) -> void:
-	for d in _buttons:
-		_buttons[d].set_pressed_no_signal(d == data)
-
-
 func _on_giggles_changed(amount: int) -> void:
 	_giggles_label.text = "Giggles  %d" % amount
-	for d in _buttons:
-		_buttons[d].disabled = amount < d.cost
 
 
 # --- Little style helpers -------------------------------------------------------

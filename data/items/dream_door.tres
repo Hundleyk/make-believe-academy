@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/item_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"dream_door"
+display_name = "Dream Door"
+type = "Method item"
+allowed_rooms = PackedStringArray("classroom")
+footprint = Vector2i(2, 1)
+cost = 150
+radius = 0
+need_mods = {}
+focus_mods = {}
+whimsy = 1
+enables_method = "practice_dream"
+tags = PackedStringArray("dream_door")
+effect_text = "Needed for Dream Nights and practice dreams"
+gray_color = Color(0.478, 0.471, 0.608, 1)
+gray_shape = "box"
+gray_size = Vector3(1.6, 1.8, 0.25)
+gray_glow = true

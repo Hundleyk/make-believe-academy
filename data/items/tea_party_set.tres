@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/item_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"tea_party_set"
+display_name = "Tea Party Set"
+type = "Course item"
+allowed_rooms = PackedStringArray("fort")
+footprint = Vector2i(2, 2)
+cost = 120
+radius = 1
+need_mods = {
+"belonging": 1
+}
+focus_mods = {}
+whimsy = 0
+unlocks_course = "advanced_tea_parties"
+tags = PackedStringArray("tea_set")
+effect_text = "Unlocks Advanced Tea Parties · Belonging +1"
+gray_color = Color(0.851, 0.475, 0.443, 1)
+gray_shape = "cylinder"
+gray_size = Vector3(1.4, 0.45, 1.4)

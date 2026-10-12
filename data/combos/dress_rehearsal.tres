@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ComboData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/combo_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"dress_rehearsal"
+display_name = "Dress Rehearsal"
+required_tags = PackedStringArray("costume_rack", "chalkboard")
+need_mods = {}
+focus_mods = {}
+bonus_text = "Simulation costs less"
+flavor_text = "Practice being scary before practicing being brave."

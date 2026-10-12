@@ -22,6 +22,10 @@ extends Resource
 ## so new items join existing combos with no code changes.
 @export var tags := PackedStringArray()
 @export_multiline var effect_text := ""      ## Short line shown in the catalog and hints
+@export var buyable := true                  ## False for things you earn (keepsakes); hidden from the Build menu
+@export var research_ideas := 0              ## Above 0: locked until researched for this many Ideas
+@export var wall_item := false               ## Has to sit on a tile touching a wall (glow stars)
+@export var drag_place := false              ## Click and drag places a line of them (partition walls)
 
 @export_group("Graybox look")
 @export var gray_color := Color(0.7, 0.7, 0.7)

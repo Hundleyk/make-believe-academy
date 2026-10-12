@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/item_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"milk_and_cookies_cart"
+display_name = "Milk-and-Cookies Cart"
+type = "Comfort"
+allowed_rooms = PackedStringArray("any")
+footprint = Vector2i(1, 1)
+cost = 60
+radius = 2
+need_mods = {
+"calm": 1,
+"fun": 1,
+"belonging": 1
+}
+focus_mods = {}
+whimsy = 1
+tags = PackedStringArray("cookie_cart", "snack")
+effect_text = "Calm +1 · Fun +1 · Belonging +1"
+gray_color = Color(0.859, 0.796, 0.698, 1)
+gray_shape = "box"
+gray_size = Vector3(0.8, 0.9, 0.6)

@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/item_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"monster_costume_rack"
+display_name = "Monster Costume Rack"
+type = "Method item"
+allowed_rooms = PackedStringArray("castle")
+footprint = Vector2i(1, 1)
+cost = 100
+radius = 0
+need_mods = {}
+focus_mods = {}
+whimsy = 1
+enables_method = "simulation"
+tags = PackedStringArray("costume_rack")
+effect_text = "Enables Simulation for Bravery"
+gray_color = Color(0.910, 0.722, 0.529, 1)
+gray_shape = "box"
+gray_size = Vector3(0.8, 1.4, 0.4)

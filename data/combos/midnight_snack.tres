@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ComboData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/combo_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"midnight_snack"
+display_name = "Midnight Snack"
+required_tags = PackedStringArray("cookie_cart", "nightlight")
+need_mods = {
+"calm": 1
+}
+focus_mods = {}
+bonus_text = "Calm +1 for scared students"
+flavor_text = "Cookies taste braver in the dark."

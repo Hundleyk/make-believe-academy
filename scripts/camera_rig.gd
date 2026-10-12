@@ -77,6 +77,13 @@ func _apply_zoom() -> void:
 	camera.rotation = Vector3(deg_to_rad(pitch_degrees), 0.0, 0.0)
 
 
+## Glide the view over to a point (the Build menu does this when you pick a room tab).
+func focus_on(point: Vector3) -> void:
+	var to := Vector3(clampf(point.x, bounds.position.x, bounds.end.x), 0.0, clampf(point.z, bounds.position.y, bounds.end.y))
+	var tw := create_tween()
+	tw.tween_property(self, "position", to, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+
 ## Where a point on the screen hits the floor (y = 0). Returns null if it misses.
 func screen_to_ground(screen_pos: Vector2) -> Variant:
 	var origin := camera.project_ray_origin(screen_pos)

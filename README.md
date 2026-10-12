@@ -11,13 +11,25 @@ Godot Project Manager → **Import** → pick `project.godot` in this folder →
 - **Q / E**: rotate the camera
 
 ### Build mode
-- **Click an item** in the Build bar (or press **1-6**) to hold it
-- **Move the mouse** to aim. The check-mark badge means it fits; the cross means it doesn't (the hint box says why)
+- The **Build menu** (bottom right) has a tab for each room plus **Anywhere**. Picking a room tab glides
+  the camera there and shows that room's items, its **whimsy** score, and a **This room needs** checklist
+  (click a line to pick that item up). Hover a card to see what the item does
+- **Click a card** (or press **1-9** for the open tab) to hold it. The check-mark badge means it fits;
+  the cross means it doesn't (the hint box says why)
 - **Left-click** to place it. You keep holding it so you can place another
-- **R**: rotate the held item
-- **Right-click** or **Esc**: stop holding
-- **Hover a placed item**: its effect ring shows. **Click** to move it (free), **right-click** or **X** to sell it for half price
-- Put a **Nightlight** near the **Story Corner Rug** to discover the Bedtime Story combo
+- **R**: rotate the held item.  **Right-click** or **Esc**: stop holding
+- **Partition walls** (Anywhere tab): click and drag to build a line of cardboard wall
+- **Glow stars** go on a tile next to a wall (a room wall or a partition)
+- **Hover a placed item**: its effect ring shows. **Click** to move it (free); **X** sells it
+- **Sell items** button: click placed items to sell them for half price (right-click or Esc to stop)
+- Items whose card says **Research** are locked until the research board arrives (M3)
+- Put a **Nightlight** near the **Story Corner Rug** to discover Bedtime Story. There are 7 combos to find,
+  and the first find of each pays a 25-Giggle grant
+
+### Earning Giggles (so far)
+- You start with 500. Each period, every student with Fun 7 or more giggles **+2** (**+3** in a room whose
+  whimsy is Just Right). Finding a new combo pays **+25**. Selling refunds half
+- Coming later: daily allowance (week 4), postcards (week 5), Joke Lab shows, grants, and graduate gifts
 
 ### Students
 - Three students (Pip, Drizzle, Bo) walk around on their own. The **Students** panel (top left) shows
@@ -27,17 +39,19 @@ Godot Project Manager → **Import** → pick `project.godot` in this folder →
 - Below 3, a **mood icon** pops up: a shaky face (Calm), a frown (Fun), or a yawn (Rest)
 - At 0 they act it out for one period: **hide** under a blanket (Calm), **wander** off to a toy (Fun),
   or **nap** where they stand (Rest)
+- **Hover a need name** (Calm, Fun, Rest) in the Students panel to see every item that raises it
 - **Hover a student** to see their needs and why they changed. While hovering, **C**, **F**, or **Z**
   empties Calm, Fun, or Rest so you can see an act-out right away (a test shortcut)
 
 ## Where things live
 - `scenes/main.tscn` is the main scene. It is nearly empty on purpose.
 - `scripts/main.gd` builds the light, the grid floor, and the three rooms in code.
-  Room sizes and positions are in the `ROOMS` list at the top.
+  Room sizes, positions, and each room's "needs" checklist are in the `ROOMS` list at the top.
 - `scripts/camera_rig.gd` is the camera. Speeds and zoom limits are at the top.
 - `scripts/build_mode.gd` is build mode: placing, rotating, selling, combos. Feel numbers
   (wobble, sell refund) are at the top.
-- `scripts/build_hud.gd` is the placeholder HUD (Giggles, catalog bar, hints, combo popup).
+- `scripts/build_hud.gd` is the placeholder HUD (Giggles, students panel, hints, combo popup).
+- `scripts/build_menu.gd` is the Build menu: room tabs, item cards, room needs, whimsy, Sell button.
 - `scripts/item_visuals.gd` makes the gray shapes, rings, and check/cross badges.
 - `scripts/students.gd` runs the students: periods, choosing items, act-outs, and the navigation
   mesh (re-baked whenever an item is placed, moved, or sold). Tuning numbers are at the top.

@@ -16,10 +16,26 @@ const GROUND_SIZE := Vector2(44, 30)
 
 ## The three demo rooms. rect is in grid tiles: Rect2i(x, z, width, depth).
 ## One tile = one meter. A tile at (x, z) covers x..x+1 and z..z+1.
+## needs: what the Build menu's "This room needs" checklist asks for (Two Point style).
+## A count of 0 means "one per student".
 const ROOMS := [
-	{"id": "fort", "name": "Blanket Fort", "rect": Rect2i(-13, -4, 8, 8), "tint": Color("7096BA")},
-	{"id": "castle", "name": "Cardboard Castle", "rect": Rect2i(-4, -4, 8, 8), "tint": Color("C48F65")},
-	{"id": "dorm", "name": "Pillow Mountain", "rect": Rect2i(5, -4, 8, 8), "tint": Color("7A789B")},
+	{"id": "fort", "name": "Blanket Fort", "rect": Rect2i(-13, -4, 8, 8), "tint": Color("7096BA"),
+		"blurb": "Classroom for Listening: tea parties and stories",
+		"needs": [
+			{"item": &"tea_party_set", "count": 1, "for": "teaches Advanced Tea Parties"},
+			{"item": &"story_corner_rug", "count": 1, "for": "for Bedtime Stories (research)"},
+		]},
+	{"id": "castle", "name": "Cardboard Castle", "rect": Rect2i(-4, -4, 8, 8), "tint": Color("C48F65"),
+		"blurb": "Classroom for Bravery and Silliness",
+		"needs": [
+			{"item": &"tamed_closet_monster", "count": 1, "for": "teaches Monster Defense"},
+			{"item": &"whoopee_cushion", "count": 1, "for": "teaches Joke Lab"},
+		]},
+	{"id": "dorm", "name": "Pillow Mountain", "rect": Rect2i(5, -4, 8, 8), "tint": Color("7A789B"),
+		"blurb": "Dorm: where students sleep at Bedtime",
+		"needs": [
+			{"item": &"pillow_bed", "count": 0, "for": "one bed per student"},
+		]},
 ]
 
 const GRID_SHADER := """
@@ -86,6 +102,19 @@ func _ready() -> void:
 
 
 # --- Rooms --------------------------------------------------------------------
+
+func room_by_id(id: String) -> Dictionary:
+	for room in ROOMS:
+		if room.id == id:
+			return room
+	return {}
+
+
+## The middle of a room's floor, in world space.
+func room_center(room: Dictionary) -> Vector3:
+	var r: Rect2i = room.rect
+	return Vector3(r.position.x + r.size.x / 2.0, 0.0, r.position.y + r.size.y / 2.0)
+
 
 ## Returns the room whose floor contains this tile, or an empty Dictionary.
 func room_at_tile(tile: Vector2i) -> Dictionary:

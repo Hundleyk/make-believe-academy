@@ -15,6 +15,11 @@ const STUDENTS_DIR := "res://data/students"
 const PERIOD_SECONDS := 20.0      ## Placeholder period length until the day clock
 ## How needs drift each period with no items around (placeholder for the activity table).
 const SCHOOL_DAY_DRIFT := {"calm": -1, "fun": -1, "rest": -1}
+## Happy students giggle, and giggles are money: each student with Fun at or above
+## GIGGLE_FUN earns GIGGLES_PER_HAPPY each period, plus a bonus in a Just Right room.
+const GIGGLE_FUN := 7
+const GIGGLES_PER_HAPPY := 2
+const JUST_RIGHT_BONUS := 1
 const ITEM_CAPACITY := 2          ## An item serves up to 2 students at once (Systems doc)
 const CONTENT_LEVEL := 8          ## Needs at or above this don't send a student anywhere
 const CALM_NIGHTLIGHT_SPEEDUP := 0.5  ## Hiding near a nightlight ends in half the time
@@ -112,7 +117,33 @@ func tick_period() -> void:
 	for s in students:
 		if not s.is_acting_out():
 			choose_target(s)
+	pay_giggles()
 	period_ticked.emit(period)
+
+
+## Happy students laugh out Giggles at the end of each period.
+func pay_giggles() -> int:
+	var total := 0
+	for s in students:
+		var amount := giggles_from(s)
+		if amount > 0:
+			total += amount
+			build_mode._float_text(s.global_position + Vector3.UP * (s.data.gray_height + 1.0), "+%d" % amount, Color("F6DA74"))
+	if total > 0:
+		GameState.earn(total)
+	return total
+
+
+func giggles_from(s: Node3D) -> int:
+	if s.is_acting_out() or s.needs["fun"] < GIGGLE_FUN:
+		return 0
+	var amount := GIGGLES_PER_HAPPY
+	var room: Dictionary = main.room_at_tile(Vector2i(floori(s.global_position.x), floori(s.global_position.z)))
+	if not room.is_empty():
+		var w: int = build_mode.room_whimsy(room.id)
+		if w >= 4 and w <= 9:
+			amount += JUST_RIGHT_BONUS
+	return amount
 
 
 ## This period's changes for one student: {need: [[reason, amount], ...]}.

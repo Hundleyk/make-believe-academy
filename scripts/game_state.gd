@@ -9,6 +9,7 @@ const STARTING_GIGGLES := 500
 
 var giggles := STARTING_GIGGLES
 var discovered_combos: Dictionary = {}   # combo id -> true
+var researched: Dictionary = {}          # item id -> true once researched (research board comes in M3)
 
 
 func can_afford(cost: int) -> bool:

@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/item_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"glow_stars"
+display_name = "Glow-in-the-Dark Stars"
+type = "Light"
+allowed_rooms = PackedStringArray("dorm")
+footprint = Vector2i(1, 1)
+cost = 50
+radius = 3
+need_mods = {
+"rest": 2
+}
+focus_mods = {}
+whimsy = 1
+tags = PackedStringArray("glow_stars", "light")
+effect_text = "Rest +2 · goes on a wall"
+wall_item = true
+gray_color = Color(0.886, 0.973, 0.612, 1)
+gray_shape = "box"
+gray_size = Vector3(0.9, 0.9, 0.08)
+gray_glow = true

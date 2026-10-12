@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ComboData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/combo_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"starry_sleepover"
+display_name = "Starry Sleepover"
+required_tags = PackedStringArray("glow_stars", "pillow_bed", "nightlight")
+need_mods = {
+"rest": 2
+}
+focus_mods = {}
+bonus_text = "Rest +2"
+flavor_text = "Nobody has ever fallen asleep this fast. Probably."

@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/item_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"thunder_in_a_jar"
+display_name = "Thunder in a Jar"
+type = "Method item"
+allowed_rooms = PackedStringArray("castle")
+footprint = Vector2i(1, 1)
+cost = 120
+radius = 0
+need_mods = {}
+focus_mods = {}
+whimsy = 2
+enables_method = "storm_simulation"
+tags = PackedStringArray("thunder_jar")
+effect_text = "Simulation for storm Bravery"
+research_ideas = 3
+gray_color = Color(0.561, 0.639, 0.737, 1)
+gray_shape = "cylinder"
+gray_size = Vector3(0.45, 0.7, 0.45)
+gray_glow = true

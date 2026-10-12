@@ -6,6 +6,7 @@ const GHOST_ALPHA := 0.55
 const OK_COLOR := Color("42C872")        # placement grid green
 const BAD_COLOR := Color("E05A68")       # heart coral
 const RING_COLOR := Color("F6DA74")      # nightlight honey glow
+const WALL_ITEM_RAISE := 0.35            # how high wall items hang
 
 static var _badge_cache := {}
 
@@ -55,6 +56,14 @@ static func make_body(data: ItemData, ghost := false) -> Node3D:
 	mi.position.y = size.y / 2.0
 	if ghost:
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	if data.wall_item:
+		# Wall items hang on a "Mount" that build mode turns to face away from the wall.
+		var mount := Node3D.new()
+		mount.name = "Mount"
+		body.add_child(mount)
+		mi.position.y += WALL_ITEM_RAISE
+		mount.add_child(mi)
+		return body
 	body.add_child(mi)
 
 	# A small nub on the front so you can tell which way an item faces.

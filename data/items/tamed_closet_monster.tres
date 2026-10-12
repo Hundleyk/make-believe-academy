@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/item_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"tamed_closet_monster"
+display_name = "Tamed Closet Monster"
+type = "Course item"
+allowed_rooms = PackedStringArray("castle")
+footprint = Vector2i(2, 2)
+cost = 150
+radius = 2
+need_mods = {}
+focus_mods = {}
+whimsy = 2
+unlocks_course = "monster_defense"
+tags = PackedStringArray("closet_monster", "monster")
+effect_text = "Unlocks Monster Defense"
+gray_color = Color(0.388, 0.306, 0.537, 1)
+gray_shape = "sphere"
+gray_size = Vector3(1.6, 1.5, 1.6)

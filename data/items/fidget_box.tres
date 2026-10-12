@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/item_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"fidget_box"
+display_name = "Fidget Box"
+type = "Learning support"
+allowed_rooms = PackedStringArray("classroom")
+footprint = Vector2i(1, 1)
+cost = 35
+radius = 2
+need_mods = {}
+focus_mods = {}
+whimsy = 1
+tags = PackedStringArray("fidget")
+effect_text = "Removes Lecture penalties for busy students"
+gray_color = Color(0.486, 0.682, 0.416, 1)
+gray_shape = "box"
+gray_size = Vector3(0.5, 0.4, 0.5)
