@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ComboData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/combo_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"bedtime_story"
+display_name = "Bedtime Story"
+required_tags = PackedStringArray("nightlight", "story_rug")
+need_mods = {
+"calm": 1
+}
+focus_mods = {
+"listening": 0.1
+}
+bonus_text = "Listening Focus +10%, Calm +1"
+flavor_text = "A soft light and a good rug. Someone is about to say \"once upon a time.\""

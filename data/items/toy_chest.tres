@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/item_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"toy_chest"
+display_name = "Toy Chest"
+type = "Fun"
+allowed_rooms = PackedStringArray("any")
+footprint = Vector2i(2, 1)
+cost = 60
+radius = 2
+need_mods = {
+"fun": 2
+}
+whimsy = 2
+tags = PackedStringArray("toy_chest", "toy")
+effect_text = "Fun +2 (+3 when full)"
+gray_color = Color(0.769, 0.561, 0.396, 1)
+gray_shape = "box"
+gray_size = Vector3(1.7, 0.6, 0.75)
