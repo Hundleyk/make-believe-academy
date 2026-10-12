@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="StudentData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/student_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"drizzle"
+display_name = "Drizzle"
+kind = "rain cloud"
+start_needs = {
+"calm": 7,
+"fun": 3,
+"rest": 6
+}
+gray_color = Color(0.561, 0.639, 0.737, 1)
+gray_height = 1.0

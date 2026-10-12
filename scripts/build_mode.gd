@@ -11,6 +11,7 @@ extends Node3D
 signal hint_changed(text: String)
 signal toast_requested(title: String, body: String)
 signal holding_changed(data: ItemData)
+signal layout_changed   ## An item was placed, moved, or sold (students re-plan their paths)
 
 const Visuals := preload("res://scripts/item_visuals.gd")
 const ITEMS_DIR := "res://data/items"
@@ -47,6 +48,7 @@ class Placed:
 
 var main: Node3D              # gives us room_at_tile()
 var camera_rig: Node3D        # gives us screen_to_ground()
+var students: Node3D          # hovering a student shows their needs instead of item hints
 var catalog: Array[ItemData] = []
 var combos: Array[ComboData] = []
 var placed: Array[Placed] = []
@@ -212,6 +214,7 @@ func place(data: ItemData, origin: Vector2i, rot: int, celebrate := true) -> Pla
 		for z in p.footprint().y:
 			occupancy[origin + Vector2i(x, z)] = p
 	placed.append(p)
+	layout_changed.emit()
 	if celebrate:
 		_wobble(p.body)
 		_check_new_combos(p)
@@ -252,6 +255,7 @@ func _remove(p: Placed) -> void:
 	for x in p.footprint().x:
 		for z in p.footprint().y:
 			occupancy.erase(p.origin + Vector2i(x, z))
+	layout_changed.emit()
 
 
 # --- Combos ---------------------------------------------------------------------
@@ -324,6 +328,25 @@ func _check_new_combos(p: Placed) -> void:
 			toast_requested.emit("New combo: " + combo.display_name, combo.bonus_text + "\n" + combo.flavor_text)
 
 
+## Every combo currently formed by placed items: [{combo, items: Array[Placed]}].
+func active_combos() -> Array:
+	var out := []
+	var seen := {}
+	for p in placed:
+		for hit in combos_including(_entry(p.data, p.center(), p.reach(), p), _entries_except(p)):
+			var ids := []
+			var items: Array = []
+			for e in hit.items:
+				ids.append(e.placed.get_instance_id())
+				items.append(e.placed)
+			ids.sort()
+			var key := "%s %s" % [hit.combo.id, ids]
+			if not seen.has(key):
+				seen[key] = true
+				out.append({"combo": hit.combo, "items": items})
+	return out
+
+
 func _light_partners(list: Array[Placed]) -> void:
 	for p in _partner_lit:
 		if is_instance_valid(p.node) and p != _hovered:
@@ -385,6 +408,8 @@ func _update_ghost(force := false) -> void:
 
 func _update_hover() -> void:
 	var p: Placed = occupancy.get(hover_tile) if hover_tile != null else null
+	if students != null and students.hovered != null:
+		p = null   # the student in front gets the hover, not the item behind them
 	if p == _hovered:
 		return
 	_clear_hover()
@@ -417,6 +442,8 @@ func _compose_hint() -> String:
 				line += "\nOoh, these look like they belong together..."
 		line += "\nClick to place  ·  R to rotate  ·  Right-click to stop"
 		return line
+	if students != null and students.hovered != null:
+		return students.hovered.hint_text()
 	if _hovered != null:
 		return "%s  ·  %s\nClick to move  ·  Right-click or X to sell (+%d Giggles)" % [
 			_hovered.data.display_name, _hovered.data.effect_text, roundi(_hovered.data.cost * SELL_REFUND)]

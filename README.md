@@ -19,6 +19,17 @@ Godot Project Manager → **Import** → pick `project.godot` in this folder →
 - **Hover a placed item**: its effect ring shows. **Click** to move it (free), **right-click** or **X** to sell it for half price
 - Put a **Nightlight** near the **Story Corner Rug** to discover the Bedtime Story combo
 
+### Students
+- Three students (Pip, Drizzle, Bo) walk around on their own. The **Students** panel (top left) shows
+  their Calm, Fun, and Rest (0-10) and what each one is doing
+- Needs change once per **period** (every 20 seconds for now; the day clock arrives in week 4).
+  Each student walks to the item that best helps their lowest need. An item serves 2 students at once
+- Below 3, a **mood icon** pops up: a shaky face (Calm), a frown (Fun), or a yawn (Rest)
+- At 0 they act it out for one period: **hide** under a blanket (Calm), **wander** off to a toy (Fun),
+  or **nap** where they stand (Rest)
+- **Hover a student** to see their needs and why they changed. While hovering, **C**, **F**, or **Z**
+  empties Calm, Fun, or Rest so you can see an act-out right away (a test shortcut)
+
 ## Where things live
 - `scenes/main.tscn` is the main scene. It is nearly empty on purpose.
 - `scripts/main.gd` builds the light, the grid floor, and the three rooms in code.
@@ -28,6 +39,11 @@ Godot Project Manager → **Import** → pick `project.godot` in this folder →
   (wobble, sell refund) are at the top.
 - `scripts/build_hud.gd` is the placeholder HUD (Giggles, catalog bar, hints, combo popup).
 - `scripts/item_visuals.gd` makes the gray shapes, rings, and check/cross badges.
+- `scripts/students.gd` runs the students: periods, choosing items, act-outs, and the navigation
+  mesh (re-baked whenever an item is placed, moved, or sold). Tuning numbers are at the top.
+- `scripts/student.gd` is one student: needs, walking, hopping, act-outs, hover text.
+- `scripts/student_visuals.gd` makes the capsules, blankets, and mood icons.
+- `data/students/*.tres` are the students (`StudentData`): name, kind, starting needs, color.
 - `scripts/game_state.gd` is autoloaded as `GameState`: Giggles and discovered combos.
 - `data/items/*.tres` are the items (`ItemData`). Double-click one in Godot to edit cost,
   radius, effects, and tags in the Inspector. Add an item by duplicating one.

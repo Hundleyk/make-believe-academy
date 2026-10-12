@@ -1,11 +1,13 @@
 extends CanvasLayer
-## Placeholder build-mode HUD: Giggles counter, catalog bar, hint line, combo popup.
+## Placeholder HUD: Giggles counter, students panel, catalog bar, hint line, combo popup.
 ## Styled as plain paper cards for now; the stationery look and fonts come later.
 
 const PAPER := Color("FFF8E7")
 const PAPER_EDGE := Color("DBCBB2")
 const TAB_TAN := Color("E8B887")
 const INK := Color("3B2C24")
+const HEART := Color("E05A68")
+const LOW_NEED := 3
 
 var build_mode: Node3D
 var _giggles_label: Label
@@ -15,6 +17,11 @@ var _toast_title: Label
 var _toast_body: Label
 var _toast_tween: Tween
 var _buttons := {}   # ItemData -> Button
+var _root: Control
+var _students: Node3D
+var _period_label: Label
+var _rows := []      # [{student, bars: {need: ProgressBar}, values: {need: Label}, status: Label}]
+var _refresh := 0.0
 
 
 func setup(mode: Node3D) -> void:
@@ -23,6 +30,7 @@ func setup(mode: Node3D) -> void:
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
+	_root = root
 
 	# Giggles, top left.
 	var gig_panel := _paper_panel()
@@ -33,7 +41,7 @@ func setup(mode: Node3D) -> void:
 
 	# Controls reminder, top right.
 	var help := _label(15)
-	help.text = "WASD pan  ·  Wheel zoom  ·  Q/E turn view"
+	help.text = "WASD pan  ·  Wheel zoom  ·  Q/E turn view  ·  Hover a student to see their needs"
 	help.add_theme_color_override("font_color", PAPER)
 	help.add_theme_color_override("font_outline_color", INK)
 	help.add_theme_constant_override("outline_size", 6)
@@ -100,6 +108,100 @@ func setup(mode: Node3D) -> void:
 	build_mode.holding_changed.connect(_on_holding_changed)
 	GameState.giggles_changed.connect(_on_giggles_changed)
 	_on_giggles_changed(GameState.giggles)
+
+
+## Students panel under the Giggles counter: each student's needs and what they're doing.
+func setup_students(students: Node3D) -> void:
+	_students = students
+	var panel := _paper_panel()
+	panel.position = Vector2(16, 76)
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(panel)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 6)
+	panel.add_child(col)
+	var title := _label(18)
+	title.text = "Students"
+	col.add_child(title)
+	_period_label = _label(13)
+	col.add_child(_period_label)
+	for st in students.students:
+		var box := VBoxContainer.new()
+		box.add_theme_constant_override("separation", 1)
+		col.add_child(box)
+		var name_row := HBoxContainer.new()
+		box.add_child(name_row)
+		var name_label := _label(16)
+		name_label.text = st.data.display_name
+		name_row.add_child(name_label)
+		var kind := _label(13)
+		kind.text = "  " + st.data.kind
+		kind.add_theme_color_override("font_color", Color(INK, 0.6))
+		name_row.add_child(kind)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		box.add_child(row)
+		var entry := {"student": st, "bars": {}, "values": {}}
+		for need in st.NEEDS:
+			var tag := _label(13)
+			tag.text = st.NEED_NAMES[need]
+			row.add_child(tag)
+			var bar := ProgressBar.new()
+			bar.max_value = st.MAX_NEED
+			bar.show_percentage = false
+			bar.custom_minimum_size = Vector2(46, 12)
+			bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			row.add_child(bar)
+			var value := _label(13)
+			value.custom_minimum_size.x = 26
+			row.add_child(value)
+			entry.bars[need] = bar
+			entry.values[need] = value
+		var status := _label(13)
+		status.add_theme_color_override("font_color", Color(INK, 0.75))
+		box.add_child(status)
+		entry["status"] = status
+		_rows.append(entry)
+	_update_students()
+
+
+func _process(delta: float) -> void:
+	if _students == null:
+		return
+	_refresh -= delta
+	if _refresh <= 0.0:
+		_refresh = 0.2
+		_update_students()
+
+
+func _update_students() -> void:
+	_period_label.text = "Period %d  ·  needs change in %ds" % [_students.period, ceili(maxf(_students.period_left, 0.0))]
+	for entry in _rows:
+		var st = entry.student
+		for need in st.NEEDS:
+			var v: int = st.needs[need]
+			var low := v < LOW_NEED
+			var bar: ProgressBar = entry.bars[need]
+			bar.value = v
+			_style_bar(bar, low)
+			# Low needs get a "!" as well as the coral bar, so it never relies on color alone.
+			entry.values[need].text = ("%d!" % v) if low else str(v)
+		entry.status.text = st.activity
+
+
+func _style_bar(bar: ProgressBar, low: bool) -> void:
+	if bar.has_meta("low") and bar.get_meta("low") == low:
+		return
+	bar.set_meta("low", low)
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = PAPER_EDGE
+	bg.set_corner_radius_all(4)
+	var fill := StyleBoxFlat.new()
+	fill.bg_color = HEART if low else TAB_TAN.darkened(0.15)
+	fill.set_corner_radius_all(4)
+	bar.add_theme_stylebox_override("background", bg)
+	bar.add_theme_stylebox_override("fill", fill)
 
 
 func show_toast(title: String, body: String) -> void:

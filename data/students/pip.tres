@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="StudentData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/student_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"pip"
+display_name = "Pip"
+kind = "small dragon"
+start_needs = {
+"calm": 4,
+"fun": 7,
+"rest": 6
+}
+gray_color = Color(0.486, 0.682, 0.416, 1)
+gray_height = 0.9

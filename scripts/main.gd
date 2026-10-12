@@ -1,11 +1,13 @@
 extends Node3D
 ## Graybox scene for Make-Believe Academy.
-## Builds the light, a grid floor, three roofless gray rooms, the camera rig, and build mode in code,
+## Builds the light, a grid floor, three roofless gray rooms, the camera rig, build mode, and the
+## students in code,
 ## so the scene file stays tiny and every number lives here where it is easy to tune.
 
 const CameraRig := preload("res://scripts/camera_rig.gd")
 const BuildMode := preload("res://scripts/build_mode.gd")
 const BuildHud := preload("res://scripts/build_hud.gd")
+const Students := preload("res://scripts/students.gd")
 
 const WALL_HEIGHT := 1.2
 const WALL_THICKNESS := 0.2
@@ -45,7 +47,9 @@ void fragment() {
 
 var camera_rig: Node3D
 var build_mode: Node3D
+var students: Node3D
 var hud: CanvasLayer
+var wall_rects: Array[Rect2] = []   ## Every wall's floor outline (x, z); students walk around them
 var _grid_shader: Shader
 
 
@@ -65,10 +69,20 @@ func _ready() -> void:
 	build_mode.main = self
 	build_mode.camera_rig = camera_rig
 	add_child(build_mode)
+
+	students = Students.new()
+	students.name = "Students"
+	students.main = self
+	students.build_mode = build_mode
+	students.camera_rig = camera_rig
+	add_child(students)
+	build_mode.students = students
+
 	hud = BuildHud.new()
 	hud.name = "HUD"
 	add_child(hud)
 	hud.setup(build_mode)
+	hud.setup_students(students)
 
 
 # --- Rooms --------------------------------------------------------------------
@@ -133,6 +147,7 @@ func _add_wall(parent: Node3D, from: Vector3, to: Vector3) -> void:
 	var size := Vector3(absf(to.x - from.x), WALL_HEIGHT, absf(to.z - from.z))
 	if size.x <= 0.0 or size.z <= 0.0:
 		return
+	wall_rects.append(Rect2(minf(from.x, to.x), minf(from.z, to.z), size.x, size.z))
 	var box := BoxMesh.new()
 	box.size = size
 	var mat := StandardMaterial3D.new()
