@@ -15,7 +15,7 @@ func setup(the_hud: CanvasLayer) -> void:
 	hud = the_hud
 	name = "StudentsPanel"
 	add_theme_stylebox_override("panel", StyleBoxEmpty.new())
-	position = Vector2(Style.HUD_INSET, 118)
+	position = Vector2(Style.HUD_INSET, 52 + 14)   # under the top bar
 	custom_minimum_size = Vector2(420, 0)
 	visible = false
 	var paper := W.Paper.new("paper", Vector4(20, 22, 22, 22), "a")

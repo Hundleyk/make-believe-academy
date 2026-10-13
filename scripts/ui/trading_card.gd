@@ -47,7 +47,7 @@ func show_student(s: Node3D) -> void:
 	row.anchor_left = 1.0
 	row.anchor_right = 1.0
 	row.offset_right = -28
-	row.offset_top = 140
+	row.offset_top = 52 + 18
 	row.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(row)
@@ -77,9 +77,12 @@ func show_student(s: Node3D) -> void:
 	tt.disabled = true
 	tt.tooltip_text = "The Timetable arrives with the day clock (M1 week 4)."
 	side.add_child(tt)
-	var nap := Style.button("Send to Nap Room", "md", true, "moon")
-	nap.disabled = true
-	nap.tooltip_text = "Sending students to rooms arrives with the Timetable (M1 week 4)."
+	var nap := Style.button("Nap in Pillow Mountain", "md", true, "moon")
+	nap.tooltip_text = "Pillow Mountain is the only room with beds. %s walks there for a rest." % s.data.display_name
+	nap.pressed.connect(func():
+		var dorm: Dictionary = hud.main.room_by_id("dorm")
+		if not dorm.is_empty() and s.walk_to(hud.main.room_center(dorm) + Vector3(randf_range(-1.5, 1.5), 0, randf_range(-1.0, 1.0))):
+			s.activity = "Off to Pillow Mountain for a nap")
 	side.add_child(nap)
 
 	# The StudentCard: a cardboard frame (selected: ink rim, lifted, tilted -1°).

@@ -25,7 +25,7 @@ func setup(the_hud: CanvasLayer) -> void:
 	hud = the_hud
 	name = "RequestsPanel"
 	add_theme_stylebox_override("panel", StyleBoxEmpty.new())
-	set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE, 110)
+	set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE, 52 + 18)
 	grow_horizontal = Control.GROW_DIRECTION_BOTH
 	visible = false
 	var paper := W.Paper.new("paper", Vector4(22, 26, 24, 26), "a")

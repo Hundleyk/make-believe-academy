@@ -66,6 +66,7 @@ const TAPE_COLORS := {"honey": HONEY, "lavender": LAVENDER, "sky": SKY, "peach":
 const TAB_ICONS := {
 	"build": ["house", HEART], "timetable": ["calendar", SKY], "students": ["ghost", LAVENDER],
 	"staff": ["eyeglasses", WOOD], "requests": ["clipboard-text", CARDBOARD],
+	"research": ["sparkle", HONEY_DEEP],
 }
 
 # --- Spacing, radii, borders (tokens/spacing.css, shapes.css) -----------------------

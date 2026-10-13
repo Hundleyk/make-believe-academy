@@ -18,10 +18,12 @@ on a wood under-edge, hand-cut paper, washi tape, paperclips, stamps, Phosphor s
 badge. The UI's base size is the mockups' 1280x720; Godot scales it to the window.
 
 ## The HUD
-- **Top**: Giggles (left), the Term · Day banner with Pause, Faster, and Menu tiles (center), the Kids' Trust meter (right)
-- **Bottom**: Leo's clipped note (left), the tab bar: **Build (B)**, Timetable (T, week 4), **Students (P)**, Staff (H, M2), **Requests (R)**, quick-build tiles of your recent items (right)
+Laid out like Two Point and Let's School, in the paper style:
+- **Top bar**: the school's name and the day, then Giggles, Ideas, students, and Kids' Trust, the Dream Night countdown, and the Menu gear
+- **Bottom left**: the day clock (the phase and how far through it) with Pause, 1×, 2×, 3×, then the category tiles: **Build (B)**, Timetable (T, week 4), **Students (P)**, Staff (H, M2), **Requests (R)**, Research (M3)
+- **Top left**: Leo's crayon notes, when no panel is open. **Bottom right**: quick-build tiles of your recent items
 - **Build** panel, docked left like Two Point and Let's School: a tab per room plus Anywhere, item cards with price, footprint, and effect chips; Sell and Close
-- **Students** drawer: click a student for their trading card (dot skill bars, personality, quirk, today's diary, could they help Leo?)
+- **Students** drawer: click a student for their trading card (dot skill bars, personality, quirk, today's diary, could they help Leo?) and a button to send them to Pillow Mountain for a nap
 - **Requests**: the Department form and "Who can help Leo?", every student ranked Very likely / Maybe / Unlikely; pick one to see why
 - **Esc** or **right-click** backs out one step: stop holding or selling, close the card, close the drawer, then the pause screen
 - **Space** pauses the students; **[** and **]** change speed

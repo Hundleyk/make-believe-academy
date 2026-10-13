@@ -13,12 +13,14 @@ signal speed_changed(speed: int)
 signal letter_accepted(letter: LetterData)
 signal letter_expired(letter: LetterData)
 signal day_changed(day: int)
+signal ideas_changed(amount: int)
 
 var giggles := STARTING_GIGGLES
 var discovered_combos: Dictionary = {}   # combo id -> true
 var trust := STARTING_TRUST
 var speed := 1                           ## 0 paused, 1 normal, 2 fast, 3 fastest
 var accepted_letters: Array[LetterData] = []
+var ideas := 0                          ## Spent on the research board (Systems doc, section 15)
 var researched: Dictionary = {}          # item id -> true once researched (research board comes in M3)
 
 
@@ -116,6 +118,8 @@ func reset() -> void:
 	play_seconds = 0.0
 	last_saved_at = 0
 	giggles = STARTING_GIGGLES
+	ideas = 0
+	ideas_changed.emit(ideas)
 	discovered_combos.clear()
 	researched.clear()
 	accepted_letters.clear()

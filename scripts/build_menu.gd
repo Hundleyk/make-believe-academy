@@ -49,8 +49,8 @@ func setup(the_hud: CanvasLayer, mode: Node3D) -> void:
 	anchor_bottom = 1.0
 	offset_left = Style.HUD_INSET
 	offset_right = Style.HUD_INSET + MENU_WIDTH
-	offset_top = 112
-	offset_bottom = -Style.HUD_INSET   # the bottom menu slides right while this is open
+	offset_top = 52 + 14                # under the top bar
+	offset_bottom = -Style.HUD_INSET - 92 - 12   # above the bottom-left time bar
 	custom_minimum_size.x = MENU_WIDTH
 
 	var paper := W.Paper.new("paper", Vector4(18, 20, 16, 20), "a")

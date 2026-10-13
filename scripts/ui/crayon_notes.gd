@@ -33,12 +33,10 @@ func setup(the_hud: CanvasLayer) -> void:
 	# paperclip, a crayon doodle in the corner.
 	_paper = W.Notebook.new()
 	_paper.custom_minimum_size = Vector2(286, 0)
-	_paper.anchor_top = 1.0
-	_paper.anchor_bottom = 1.0
-	_paper.offset_left = Style.HUD_INSET
-	_paper.offset_bottom = -Style.HUD_INSET
-	_paper.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_paper.rotation_degrees = -2.0
+	# Top left, under the top bar (Two Point keeps objectives there).
+	_paper.offset_left = Style.HUD_INSET + 4
+	_paper.offset_top = 52 + 22
+	_paper.rotation_degrees = -1.5
 	_paper.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(_paper)
 	_lines = VBoxContainer.new()
@@ -130,12 +128,15 @@ func _draw_notes() -> void:
 	dear.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(dear)
 	var left := GameState.days_left(letter)
-	var due := Style.chip("Dream Night: %s" % ("today!" if left <= 0 else "%d day%s" % [left, "" if left == 1 else "s"]), Style.HONEY if left > 2 else Style.PEACH_LIGHT, Style.HONEY_DEEP if left > 2 else Style.HEART, 12, 700)
+	var due := Style.chip("today!" if left <= 0 else "%d day%s left" % [left, "" if left == 1 else "s"], Style.HONEY if left > 2 else Style.PEACH_LIGHT, Style.HONEY_DEEP if left > 2 else Style.HEART, 12, 700)
 	due.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	due.rotation_degrees = 3
 	due.tooltip_text = "%s's friend has to be ready by Dream Night, day %d." % [letter.child, letter.dream_day]
 	due.mouse_filter = Control.MOUSE_FILTER_PASS
 	head.add_child(due)
+	var clip_room := Control.new()   # keep the chip clear of the paperclip
+	clip_room.custom_minimum_size.x = 30
+	head.add_child(clip_room)
 	var cur := current_index()
 	for i in letter.notes.size():
 		if i > cur and cur != -1:
