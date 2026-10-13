@@ -1,84 +1,119 @@
 extends RefCounted
-## The Make-Believe Academy design system in one place: colors, fonts, cardboard buttons,
-## paper boxes, tabs, sliders, toggles, chips, and small helpers. Every screen builds from
-## these, so a later art pass changes only this file and widgets.gd.
-## (Look: the "Make-Believe Academy" design system and Game_Menus mockups 01-10.)
+## The Make-Believe Academy design system in Godot: tokens (colors, type, spacing, radii,
+## shadows) from the design system's tokens/*.css, and builders for its core pieces
+## (PaperButton, ToyButton, chips, tabs, sliders, toggles). Drawn pieces live in widgets.gd.
+## The UI's base size is the mockups' 1280x720; Godot scales it to the window.
+## (Source: "Make-Believe Academy — Design System" README, tokens and components.)
 
-# --- Palette ------------------------------------------------------------------------
-const PAPER := Color("FFF8E7")            # cream paper sheets and cream buttons
-const PAPER_EDGE := Color("DBCBB2")
-const PAPER_DARK := Color("F2E6CF")       # a sheet behind a sheet
-const DESK := Color("F3E9D6")             # full-screen menus (Settings, Load School)
-const NOTEBOOK := Color("FFFDF5")         # lined notebook paper
-const NOTEBOOK_LINE := Color("BCD0EA")
-const MARGIN_LINE := Color("F0A8AE")
-const TAB_TAN := Color("EBBF8E")          # cardboard buttons and tiles
-const TAN_DEEP := Color("D9A673")
-const LIP := Color("8E603F")              # the cardboard lip under tan buttons
-const LIP_DARK := Color("5A3A2B")         # the lip under cream buttons
-const TAPE := Color(0.91, 0.72, 0.53, 0.75)
-const INK := Color("3B2A22")
-const INK_SOFT := Color(0.231, 0.165, 0.133, 0.68)
-const CRAYON_BLUE := Color("2A3D7A")
-const CRAYON_PURPLE := Color("634E89")
-const HEART := Color("E05A68")
-const HONEY := Color("F6DA74")
-const HONEY_DEEP := Color("E2B83E")
-const OK_GREEN := Color("47C46E")
-const OK_DEEP := Color("2E8F4E")
-const CARDBOARD := Color("C48F65")
-const WOOD := Color("6B4332")
-const NIGHT := Color("2A2A44")
-const NAVY := Color("2B2D4E")             # the bottom tab bar and the loading screen
-const FORM := Color("F7EEDD")
-const FORM_LINE := Color("C9B796")
-const TRACK := Color("DCCFB9")            # empty slider and dot tracks
-const BAR_DARK := Color("5B3A2C")         # the clock and trust bar tracks
-const LAVENDER := Color("D3CFF3")         # personality chips
-const PINK := Color("F7CDD0")             # quirk chips
-const MINT := Color("D9F2DF")             # effect chips
-const PIN_BLUE := Color("6F9AC6")
-const WASHI_BLUE := Color("9DB8DC")
-const WASHI_PINK := Color("EFA3A8")
-const SKY := Color("C9DDF0")              # portrait circles
+# --- Colors (tokens/colors.css) -----------------------------------------------------
+const CARDBOARD := Color("C48F65")        # --cardboard-tan: card edges, rims
+const WOOD := Color("6B4332")             # --wood-trim: the under-edge of tabs, skill solid
+const LAVENDER := Color("7A789B")         # --pillow-lavender
+const SKY := Color("7096BA")              # --fort-sky-blue
+const PEACH := Color("D97971")            # --peach-rose
+const INDIGO := Color("2A2A44")           # --deep-indigo: dock bar, night rooms, loading
+const HONEY := Color("F6DA74")            # --honey-glow: Giggles
+const LIME := Color("E2F89C")             # --star-lime: highlight, active toy buttons
+const GREEN := Color("42C872")            # --grid-green: progress, valid
+const PAPER := Color("FFF8E7")            # --paper-white
+const PAPER_SHADOW := Color("DBCBB2")     # --paper-shadow
+const TAB_TAN := Color("E8B887")          # --tab-tan
+const HEART := Color("E05A68")            # --heart-coral: Trust, invalid
+const INK := Color("3B2C24")              # --ink-brown: all text on paper
+const BOARD := Color("F5EBD6")            # --board-cream: full-screen menus
+const PAPER_LINE := Color("B9CBE0")
+const PAPER_MARGIN := Color("E9A3A0")
+const INK_SOFT := Color("6A574B")
+const GREEN_DEEP := Color("2A9A54")
+const HEART_DEEP := Color("B83B4A")       # --stamp-red
+const HONEY_DEEP := Color("D9A93A")
+const TAB_TAN_LIGHT := Color("F3D3AE")
+const LAVENDER_LIGHT := Color("C9C6DE")
+const SKY_LIGHT := Color("C4D6E8")
+const PEACH_LIGHT := Color("F2C3BC")
+const LIME_LIGHT := Color("F1FCCD")
+const COIN_RING := Color("FBE9A6")
+const SHADOW := Color(0.231, 0.173, 0.141, 0.18)   # rgba(59,44,36,.18)
 
-## Tile colors for the five bottom tabs (Build, Timetable, Students, Staff, Requests).
-const TAB_COLORS := {
-	"build": Color("E05A68"), "timetable": Color("6F9AC6"), "students": Color("7F7FB0"),
-	"staff": Color("6B4332"), "requests": Color("C48F65"),
+## Older names kept so every screen reads the same tokens.
+const PAPER_EDGE := PAPER_SHADOW
+const PAPER_DARK := BOARD
+const DESK := BOARD
+const NOTEBOOK := PAPER
+const NOTEBOOK_LINE := PAPER_LINE
+const MARGIN_LINE := PAPER_MARGIN
+const NIGHT := INDIGO
+const NAVY := INDIGO
+const OK_GREEN := GREEN
+const OK_DEEP := GREEN_DEEP
+const CRAYON_BLUE := INK
+const CRAYON_PURPLE := LAVENDER
+const FORM := PAPER
+const FORM_LINE := PAPER_LINE
+const TRACK := PAPER_SHADOW
+const MINT := LIME_LIGHT
+const PINK := PEACH_LIGHT
+const PIN_BLUE := SKY
+const WASHI_BLUE := SKY
+const WASHI_PINK := PEACH
+
+## ItemCard tints (components/cards/ItemCard.jsx).
+const TINTS := {"honey": HONEY, "lime": LIME, "sky": SKY_LIGHT, "lavender": LAVENDER_LIGHT, "peach": PEACH_LIGHT, "tan": TAB_TAN_LIGHT}
+## WashiTape colors (components/core/WashiTape.jsx).
+const TAPE_COLORS := {"honey": HONEY, "lavender": LAVENDER, "sky": SKY, "peach": PEACH, "lime": LIME, "coral": HEART, "tan": TAB_TAN}
+
+## The bottom menu's five tabs: icon and sticker color (components/navigation/BottomMenu.jsx).
+const TAB_ICONS := {
+	"build": ["house", HEART], "timetable": ["calendar", SKY], "students": ["ghost", LAVENDER],
+	"staff": ["eyeglasses", WOOD], "requests": ["clipboard-text", CARDBOARD],
 }
 
-# --- Fonts --------------------------------------------------------------------------
+# --- Spacing, radii, borders (tokens/spacing.css, shapes.css) -----------------------
+const SPACE := [0, 4, 6, 10, 14, 18, 24, 32, 44, 60]
+const HUD_INSET := 18
+const BORDER := 3
+## Soft, uneven corners: 16px 12px 18px 11px (top-left, top-right, bottom-right, bottom-left).
+const RADIUS := [16, 12, 18, 11]
+
+# --- Type (tokens/typography.css) ---------------------------------------------------
 const FREDOKA_PATH := "res://ui/fonts/Fredoka.ttf"
 const HAND_PATH := "res://ui/fonts/PatrickHand-Regular.ttf"
 const READABLE_PATH := "res://ui/fonts/AtkinsonHyperlegible-Regular.ttf"
 const READABLE_BOLD_PATH := "res://ui/fonts/AtkinsonHyperlegible-Bold.ttf"
+const TEXT_XS := 13
+const TEXT_SM := 15
+const TEXT_MD := 18
+const TEXT_LG := 24
+const TEXT_XL := 32
+const TEXT_DISPLAY := 48
+const HAND_SM := 18
+const HAND_MD := 24
+const HAND_LG := 34
 
 ## Accessibility setting from the design doc: swap every font for Atkinson Hyperlegible.
 static var readable_font := false
 static var _fonts := {}
-static var _textures := {}
 
 
-## UI font at a weight (400 regular, 500 medium, 600 semibold, 700 bold). Fredoka is variable.
-static func font(weight := 400) -> Font:
-	var key := "ui%d%s" % [weight, "r" if readable_font else ""]
+## UI font (Fredoka) at a weight: 400, 500, 600, 700. `spacing` adds letter spacing in px
+## (labels use 0.06em, stamps 0.14em).
+static func font(weight := 400, spacing := 0) -> Font:
+	var key := "ui%d_%d%s" % [weight, spacing, "r" if readable_font else ""]
 	if _fonts.has(key):
 		return _fonts[key]
-	var f: Font
+	var v := FontVariation.new()
 	if readable_font:
-		f = load(READABLE_BOLD_PATH if weight >= 600 else READABLE_PATH)
+		v.base_font = load(READABLE_BOLD_PATH if weight >= 600 else READABLE_PATH)
 	else:
-		var v := FontVariation.new()
 		v.base_font = load(FREDOKA_PATH)
 		var ts := TextServerManager.get_primary_interface()
 		v.variation_opentype = {ts.name_to_tag("wght"): weight, ts.name_to_tag("wdth"): 100}
-		f = v
-	_fonts[key] = f
-	return f
+	v.spacing_glyph = spacing
+	_fonts[key] = v
+	return v
 
 
-## Children's handwriting (letters, crayon notes, school names, species).
+## Kid handwriting (Patrick Hand): letters, species names, form fill-ins only.
 static func hand() -> Font:
 	if readable_font:
 		return font(400)
@@ -87,143 +122,155 @@ static func hand() -> Font:
 	return _fonts["hand"]
 
 
-## The theme every HUD control inherits: Fredoka, ink text, cardboard buttons, honey
-## sliders, green pill toggles, paper tooltips.
+## The theme every HUD control inherits.
 static func make_theme() -> Theme:
 	var t := Theme.new()
-	t.default_font = font(400)
-	t.default_font_size = 15
+	t.default_font = font(500)
+	t.default_font_size = TEXT_MD
 	for type in ["Label", "Button", "LinkButton", "CheckBox", "CheckButton", "RichTextLabel", "TooltipLabel", "OptionButton"]:
 		t.set_color("font_color", type, INK)
-	t.set_color("default_color", "RichTextLabel", INK)
-	for type in ["Button", "OptionButton", "CheckButton"]:
-		t.set_color("font_hover_color", type, INK)
-		t.set_color("font_pressed_color", type, INK)
-		t.set_color("font_hover_pressed_color", type, INK)
-		t.set_color("font_focus_color", type, INK)
-		t.set_color("font_disabled_color", type, Color(INK, 0.45))
+	for type in ["Button", "OptionButton"]:
+		for c in ["font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color"]:
+			t.set_color(c, type, INK)
+		t.set_color("font_disabled_color", type, INK_SOFT)
+		t.set_stylebox("focus", type, StyleBoxEmpty.new())
 	t.set_color("font_hover_color", "LinkButton", INK)
 	t.set_color("font_pressed_color", "LinkButton", INK)
-	_set_button_styles(t, "Button", false)
-	_set_button_styles(t, "OptionButton", false)
-	t.set_stylebox("focus", "Button", StyleBoxEmpty.new())
-	t.set_stylebox("focus", "OptionButton", StyleBoxEmpty.new())
-	t.set_stylebox("panel", "PopupMenu", paper_box(8, 10))
-	t.set_color("font_color", "PopupMenu", INK)
-	t.set_color("font_hover_color", "PopupMenu", INK)
-	t.set_stylebox("hover", "PopupMenu", flat_box(HONEY, Color(0, 0, 0, 0), 0, 6, 4))
-	t.set_stylebox("panel", "TooltipPanel", paper_box(8, 8))
+	var paper := button_box("paper")
+	t.set_stylebox("normal", "Button", paper)
+	t.set_stylebox("hover", "Button", button_box("paper", "hover"))
+	t.set_stylebox("pressed", "Button", button_box("paper", "selected"))
+	t.set_stylebox("hover_pressed", "Button", button_box("paper", "selected"))
+	t.set_stylebox("disabled", "Button", button_box("paper", "disabled"))
+	# Tooltip (components/cards/Tooltip.jsx): paper with an ink rim.
+	var tip := flat_box(PAPER, INK, 3, 12, 10)
+	tip.shadow_color = SHADOW
+	tip.shadow_size = 6
+	tip.shadow_offset = Vector2(0, 4)
+	t.set_stylebox("panel", "TooltipPanel", tip)
 	t.set_color("font_color", "TooltipLabel", INK)
-	t.set_font("font", "TooltipLabel", font(400))
-	t.set_font_size("font_size", "TooltipLabel", 14)
-	t.set_stylebox("panel", "PanelContainer", paper_box())
-	t.set_stylebox("background", "ProgressBar", bar_box(TRACK))
-	t.set_stylebox("fill", "ProgressBar", bar_box(OK_GREEN))
-	# Sliders: a honey fill on a sand track, a white round knob (mockup 03).
-	var track := flat_box(TRACK, Color("C9B99E"), 2, 8, 0)
-	track.content_margin_top = 6
-	track.content_margin_bottom = 6
+	t.set_font("font", "TooltipLabel", font(500))
+	t.set_font_size("font_size", "TooltipLabel", TEXT_SM)
+	t.set_stylebox("panel", "PanelContainer", StyleBoxEmpty.new())
+	t.set_stylebox("panel", "PopupMenu", flat_box(PAPER, CARDBOARD, 3, 12, 8))
+	# Sliders (mockup 03): a sand pill track, honey fill, a paper knob with an ink rim.
+	var track := flat_box(PAPER_SHADOW, Color(0, 0, 0, 0), 0, 8, 0)
+	track.content_margin_top = 8
+	track.content_margin_bottom = 8
 	t.set_stylebox("slider", "HSlider", track)
 	var fill := flat_box(HONEY, HONEY_DEEP, 2, 8, 0)
-	fill.content_margin_top = 6
-	fill.content_margin_bottom = 6
+	fill.content_margin_top = 8
+	fill.content_margin_bottom = 8
 	t.set_stylebox("grabber_area", "HSlider", fill)
 	t.set_stylebox("grabber_area_highlight", "HSlider", fill)
-	t.set_icon("grabber", "HSlider", knob_texture(30))
-	t.set_icon("grabber_highlight", "HSlider", knob_texture(30, true))
-	t.set_icon("grabber_disabled", "HSlider", knob_texture(30))
+	var W = load("res://scripts/ui/widgets.gd")
+	t.set_icon("grabber", "HSlider", W.knob_texture(30))
+	t.set_icon("grabber_highlight", "HSlider", W.knob_texture(30))
+	t.set_icon("grabber_disabled", "HSlider", W.knob_texture(30))
 	t.set_stylebox("focus", "HSlider", StyleBoxEmpty.new())
-	# Toggles: a green pill with a white knob when on, a sand pill when off.
-	for k in ["checked", "checked_mirrored", "checked_disabled", "checked_disabled_mirrored"]:
-		t.set_icon(k, "CheckButton", pill_texture(true))
-	for k in ["unchecked", "unchecked_mirrored", "unchecked_disabled", "unchecked_disabled_mirrored"]:
-		t.set_icon(k, "CheckButton", pill_texture(false))
-	for st in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
-		t.set_stylebox(st, "CheckButton", StyleBoxEmpty.new())
-	t.set_stylebox("scroll", "VScrollBar", flat_box(Color(TRACK, 0.6), Color(0, 0, 0, 0), 0, 6, 3))
-	t.set_stylebox("grabber", "VScrollBar", flat_box(TAN_DEEP, Color(0, 0, 0, 0), 0, 6, 3))
-	t.set_stylebox("grabber_highlight", "VScrollBar", flat_box(CARDBOARD, Color(0, 0, 0, 0), 0, 6, 3))
-	t.set_stylebox("grabber_pressed", "VScrollBar", flat_box(CARDBOARD, Color(0, 0, 0, 0), 0, 6, 3))
-	t.set_stylebox("scroll", "HScrollBar", flat_box(Color(TRACK, 0.6), Color(0, 0, 0, 0), 0, 6, 3))
-	t.set_stylebox("grabber", "HScrollBar", flat_box(TAN_DEEP, Color(0, 0, 0, 0), 0, 6, 3))
-	t.set_stylebox("grabber_highlight", "HScrollBar", flat_box(CARDBOARD, Color(0, 0, 0, 0), 0, 6, 3))
-	t.set_stylebox("grabber_pressed", "HScrollBar", flat_box(CARDBOARD, Color(0, 0, 0, 0), 0, 6, 3))
+	for bar in ["VScrollBar", "HScrollBar"]:
+		t.set_stylebox("scroll", bar, flat_box(Color(PAPER_SHADOW, 0.6), Color(0, 0, 0, 0), 0, 6, 3))
+		t.set_stylebox("grabber", bar, flat_box(CARDBOARD, Color(0, 0, 0, 0), 0, 6, 3))
+		t.set_stylebox("grabber_highlight", bar, flat_box(WOOD, Color(0, 0, 0, 0), 0, 6, 3))
+		t.set_stylebox("grabber_pressed", bar, flat_box(WOOD, Color(0, 0, 0, 0), 0, 6, 3))
 	return t
-
-
-static func _set_button_styles(t: Theme, type: String, tan: bool) -> void:
-	var bg := TAB_TAN if tan else PAPER
-	t.set_stylebox("normal", type, lip_box(bg, tan))
-	t.set_stylebox("hover", type, lip_box(bg.lightened(0.12), tan))
-	t.set_stylebox("pressed", type, lip_box(PAPER, false, true, true))
-	t.set_stylebox("hover_pressed", type, lip_box(PAPER, false, true, true))
-	t.set_stylebox("disabled", type, lip_box(bg.lerp(DESK, 0.5), tan, false, false, true))
 
 
 # --- Boxes --------------------------------------------------------------------------
 
-## A sheet of paper with a soft drop shadow (no outline: paper, not a box).
-static func paper_box(margin := 14, radius := 6, bg := PAPER) -> StyleBoxFlat:
+static func _uneven(sb: StyleBoxFlat, scale := 1.0) -> void:
+	sb.corner_radius_top_left = int(RADIUS[0] * scale)
+	sb.corner_radius_top_right = int(RADIUS[1] * scale)
+	sb.corner_radius_bottom_right = int(RADIUS[2] * scale)
+	sb.corner_radius_bottom_left = int(RADIUS[3] * scale)
+
+
+## The PaperButton look (components/core/PaperButton.jsx). tone "tan" or "paper";
+## state normal, hover, pressed, selected, disabled. A 3px cardboard rim sits on a
+## wood under-edge (--shadow-tab); selected gets an ink rim and lifts.
+static func button_box(tone := "tan", state := "normal", pad := Vector2(20, 10)) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = bg
-	sb.border_color = Color(PAPER_EDGE, 0.6)
-	sb.set_border_width_all(1)
-	sb.set_corner_radius_all(radius)
-	sb.set_content_margin_all(margin)
-	sb.shadow_color = Color(NIGHT, 0.3)
-	sb.shadow_size = 8
-	sb.shadow_offset = Vector2(2, 5)
+	var base := PAPER if tone == "paper" else TAB_TAN
+	sb.bg_color = base
+	sb.border_color = CARDBOARD
+	sb.set_border_width_all(BORDER)
+	_uneven(sb)
+	sb.shadow_color = WOOD
+	sb.shadow_size = 1
+	sb.shadow_offset = Vector2(0, 4)
+	sb.content_margin_left = pad.x
+	sb.content_margin_right = pad.x
+	sb.content_margin_top = pad.y
+	sb.content_margin_bottom = pad.y
+	sb.anti_aliasing = true
+	match state:
+		"hover":
+			sb.bg_color = LIME_LIGHT if tone == "paper" else TAB_TAN_LIGHT
+			sb.shadow_offset = Vector2(0, 6)
+			sb.expand_margin_top = 2
+			sb.expand_margin_bottom = -2
+		"pressed":
+			sb.shadow_offset = Vector2(0, 1)
+			sb.content_margin_top = pad.y + 3
+			sb.content_margin_bottom = pad.y - 3
+		"selected":
+			sb.bg_color = PAPER
+			sb.border_color = INK
+			sb.shadow_offset = Vector2(0, 8)
+			sb.expand_margin_top = 4
+			sb.expand_margin_bottom = -4
+		"disabled":
+			sb.bg_color = PAPER_SHADOW
+			sb.border_color = Color(CARDBOARD, 0.8)
+			sb.shadow_size = 0
+			sb.shadow_color = Color(0, 0, 0, 0)
 	return sb
 
 
-## The cardboard button (mockups): a brown outline and a thick lip along the bottom edge.
-## Tan is the main action; cream is secondary, and also marks the selected item.
-## `down` presses the lip in; `selected` gives the heavy ink outline of a chosen item.
-static func lip_box(bg: Color, tan := true, down := false, selected := false, dim := false, radius := 12) -> StyleBoxFlat:
+## Kept for older callers: tan when `tan`, paper otherwise; `selected` = ink rim.
+static func lip_box(bg: Color, tan := true, down := false, selected := false, dim := false, _radius := 12) -> StyleBoxFlat:
+	var state := "disabled" if dim else ("selected" if selected else ("pressed" if down else "normal"))
+	var sb := button_box("tan" if tan else "paper", state)
+	if not selected and not dim:
+		sb.bg_color = bg
+	return sb
+
+
+## A cardboard-rimmed card on a wood under-edge (item cards, slot cards, helper rows).
+## `selected`: paper face, ink rim, lifted. `tone` "paper" or "tan" (--tab-tan-light).
+static func card_box(selected := false, tan := false, margin := 10) -> StyleBoxFlat:
+	var sb := button_box("paper", "selected" if selected else "normal", Vector2(margin, margin))
+	if not selected and tan:
+		sb.bg_color = TAB_TAN_LIGHT
+	if not selected:
+		sb.shadow_offset = Vector2(0, 4)
+	return sb
+
+
+## A plain sheet of paper (a box version of PaperCard with no cut edge).
+static func paper_box(margin := 14, radius := 6, bg := PAPER) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = bg
-	var edge := LIP if tan else LIP_DARK
-	if selected:
-		edge = INK
-	if dim:
-		edge = Color(edge, 0.45)
-	sb.border_color = edge
-	var w := 3 if selected else 2
-	sb.border_width_left = w
-	sb.border_width_right = w
-	sb.border_width_top = w
-	sb.border_width_bottom = 3 if down else 7
 	sb.set_corner_radius_all(radius)
-	sb.content_margin_left = 16
-	sb.content_margin_right = 16
-	sb.content_margin_top = 9 if down else 6
-	sb.content_margin_bottom = 6
-	sb.shadow_color = Color(NIGHT, 0.0 if dim else 0.14)
-	sb.shadow_size = 3
+	sb.set_content_margin_all(margin)
+	sb.shadow_color = PAPER_SHADOW
+	sb.shadow_size = 1
 	sb.shadow_offset = Vector2(0, 2)
 	return sb
 
 
-## Kept for older callers: a flat button box.
-static func button_box(bg: Color, border: Color, radius := 10) -> StyleBoxFlat:
-	var sb := lip_box(bg, true, false, false, false, radius)
-	sb.border_color = border
-	return sb
-
-
-## A tab (Settings, Build rooms): tan when idle, cream with an ink outline when open.
 static func tab_box(active: bool) -> StyleBoxFlat:
-	return lip_box(PAPER if active else TAB_TAN, not active, false, active)
+	return button_box("tan", "selected" if active else "normal")
 
 
 static func bar_box(color: Color) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = color
-	sb.set_corner_radius_all(6)
+	sb.set_corner_radius_all(999)
 	return sb
 
 
-## A filled rounded box with no shadow (rows, chips, quirk boxes).
+## A filled rounded box with no shadow (chips, quirk boxes, rows).
 static func flat_box(bg: Color, border := Color(0, 0, 0, 0), width := 0, radius := 10, margin := 10) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = bg
@@ -234,24 +281,15 @@ static func flat_box(bg: Color, border := Color(0, 0, 0, 0), width := 0, radius 
 	return sb
 
 
-## A cardboard card: cream or tan with an outline and a lip (slot cards, item cards, rows).
-static func card_box(selected := false, tan := false, margin := 12) -> StyleBoxFlat:
-	var sb := lip_box(PAPER if not tan else TAB_TAN, not selected, false, selected, false, 14)
-	if not selected:
-		sb.border_color = Color("C79A6E") if not tan else LIP
-		sb.border_width_bottom = 6
+static func empty_box(margin := 12) -> StyleBoxEmpty:
+	var sb := StyleBoxEmpty.new()
 	sb.set_content_margin_all(margin)
 	return sb
 
 
-## A dashed outline drawn by the caller; this is the empty fill behind it.
-static func empty_box(margin := 12) -> StyleBoxFlat:
-	return flat_box(Color(0, 0, 0, 0), Color(0, 0, 0, 0), 0, 14, margin)
+# --- Text ---------------------------------------------------------------------------
 
-
-# --- Widgets ------------------------------------------------------------------------
-
-static func label(text := "", size := 15, weight := 400, color := INK) -> Label:
+static func label(text := "", size := TEXT_MD, weight := 500, color := INK) -> Label:
 	var l := Label.new()
 	l.text = text
 	l.add_theme_font_override("font", font(weight))
@@ -260,7 +298,7 @@ static func label(text := "", size := 15, weight := 400, color := INK) -> Label:
 	return l
 
 
-static func hand_label(text := "", size := 20, color := CRAYON_BLUE) -> Label:
+static func hand_label(text := "", size := HAND_MD, color := INK) -> Label:
 	var l := Label.new()
 	l.text = text
 	l.add_theme_font_override("font", hand())
@@ -269,10 +307,10 @@ static func hand_label(text := "", size := 20, color := CRAYON_BLUE) -> Label:
 	return l
 
 
-## Small caps over a form ("FORM 3-C: COMFORT PREFERENCES", "BUILDING IN").
-static func caps(text: String, size := 12, color := INK_SOFT) -> Label:
+## Small caps over a form ("FORM 3-C: COMFORT PREFERENCES", "BUILDING IN"): 600, 0.06em.
+static func caps(text: String, size := TEXT_XS, color := INK_SOFT) -> Label:
 	var l := label(text.to_upper(), size, 600, color)
-	l.add_theme_constant_override("outline_size", 0)
+	l.add_theme_font_override("font", font(600, roundi(size * 0.06)))
 	return l
 
 
@@ -282,93 +320,176 @@ static func paper_panel(margin := 14) -> PanelContainer:
 	return p
 
 
-## A cardboard button. `primary` makes it tan (the main action); otherwise it's cream.
-## `icon` draws one of the widgets.gd Icon shapes at its left.
-static func button(text: String, size := 15, primary := false, icon := "") -> Button:
+# --- PaperButton --------------------------------------------------------------------
+
+## Size presets (PaperButton): padding, font size, icon size.
+const BUTTON_SIZES := {"sm": [Vector2(14, 6), 15, 16], "md": [Vector2(20, 10), 18, 20], "lg": [Vector2(28, 14), 22, 24]}
+
+
+## A PaperButton. `size` is "sm" | "md" | "lg" (or a font size, mapped to the nearest);
+## `primary` true = tan tone, false = paper tone; `icon` = a Phosphor name (bold).
+static func button(text: String, size: Variant = "md", primary := false, icon := "") -> Button:
+	var key: String = size if size is String else ("sm" if int(size) <= 15 else ("md" if int(size) <= 19 else "lg"))
+	var spec: Array = BUTTON_SIZES[key]
 	var b := Button.new()
 	b.text = text
 	b.focus_mode = Control.FOCUS_NONE
 	b.add_theme_font_override("font", font(600))
-	b.add_theme_font_size_override("font_size", size)
-	var bg := TAB_TAN if primary else PAPER
-	b.add_theme_stylebox_override("normal", lip_box(bg, primary))
-	b.add_theme_stylebox_override("hover", lip_box(bg.lightened(0.12), primary))
-	b.add_theme_stylebox_override("pressed", lip_box(PAPER, false, true, true))
-	b.add_theme_stylebox_override("hover_pressed", lip_box(PAPER, false, true, true))
-	b.add_theme_stylebox_override("disabled", lip_box(bg.lerp(DESK, 0.5), primary, false, false, true))
+	b.add_theme_font_size_override("font_size", spec[1])
+	b.set_meta("tone", "tan" if primary else "paper")
+	_style_button(b, "tan" if primary else "paper", spec[0])
 	if icon != "":
-		add_icon(b, icon, size)
+		add_icon(b, icon, spec[2])
 	return b
 
 
-## Put a drawn icon at a button's left edge and make room for it.
-static func add_icon(b: Button, icon: String, text_size := 15, color := INK) -> void:
+static func _style_button(b: Button, tone: String, pad: Vector2) -> void:
+	b.add_theme_stylebox_override("normal", button_box(tone, "normal", pad))
+	b.add_theme_stylebox_override("hover", button_box(tone, "hover", pad))
+	b.add_theme_stylebox_override("pressed", button_box(tone, "selected", pad))
+	b.add_theme_stylebox_override("hover_pressed", button_box(tone, "selected", pad))
+	b.add_theme_stylebox_override("disabled", button_box(tone, "disabled", pad))
+	b.add_theme_color_override("font_disabled_color", INK_SOFT)
+
+
+## A PaperButton that starts selected (ink rim, lifted): the current choice in a menu.
+static func select_button(b: Button, on := true) -> void:
+	var pad := Vector2(b.get_theme_stylebox("normal").content_margin_left, b.get_theme_stylebox("normal").content_margin_top)
+	var tone: String = b.get_meta("tone", "tan")
+	for st in ["normal", "hover"]:
+		var sb := button_box(tone, "selected" if on else st, pad)
+		if b.has_meta("icon_room"):
+			sb.content_margin_left = b.get_meta("icon_room")
+		b.add_theme_stylebox_override(st, sb)
+
+
+## Put a Phosphor icon (bold) at a button's left, before its text.
+static func add_icon(b: Button, icon: String, px := 20, color := INK) -> void:
 	var W = load("res://scripts/ui/widgets.gd")
-	var px := clampf(text_size * 1.25, 16.0, 30.0)
-	var ic: Control = W.Icon.new(icon, px, color)
+	var ic: Control = W.Icon.new(icon, px, color, "bold")
 	ic.anchor_top = 0.5
 	ic.anchor_bottom = 0.5
-	ic.offset_left = 16
-	ic.offset_right = 16 + px
+	var left: float = b.get_theme_stylebox("normal").content_margin_left
+	ic.offset_left = left
+	ic.offset_right = left + px
 	ic.offset_top = -px / 2.0 - 1.0
 	ic.offset_bottom = px / 2.0 - 1.0
+	ic.name = "Icon"
 	b.add_child(ic)
+	var room: float = left + px + 8
+	b.set_meta("icon_room", room)
+	if b.text == "":
+		ic.anchor_left = 0.5
+		ic.anchor_right = 0.5
+		ic.offset_left = -px / 2.0
+		ic.offset_right = px / 2.0
+		return
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	for st in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
 		var sb = b.get_theme_stylebox(st)
 		if sb is StyleBoxFlat:
 			var c: StyleBoxFlat = sb.duplicate()
-			c.content_margin_left = 16 + px + 10
+			c.content_margin_left = room
 			b.add_theme_stylebox_override(st, c)
 
 
-## Tan or cream as a toggle: tan while idle, cream with an ink outline while pressed (tabs).
-static func tab_button(text: String, size := 15, icon := "") -> Button:
+## Tabs: a toggle PaperButton (tan while idle, paper with an ink rim while open).
+static func tab_button(text: String, size: Variant = "md", icon := "") -> Button:
 	var b := button(text, size, true, icon)
 	b.toggle_mode = true
 	return b
 
 
-## A rounded chip: "Year 1", "2x2", "+2 Calm", personality and quirk tags.
-static func chip(text: String, bg: Color, border := Color(0, 0, 0, 0), size := 13, weight := 600, fg := INK) -> PanelContainer:
+## ToyButton (components/hud/ToyButton.jsx): a 56px tan-light tile with a sticker icon;
+## active = pressed in with a lime face and an ink rim.
+static func toy_box(active := false, hover := false) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = LIME if active else (PAPER if hover else TAB_TAN_LIGHT)
+	sb.border_color = INK if active else CARDBOARD
+	sb.set_border_width_all(BORDER)
+	_uneven(sb)
+	sb.shadow_color = WOOD
+	sb.shadow_size = 1
+	sb.shadow_offset = Vector2(0, 1 if active else 5)
+	if active:
+		sb.expand_margin_top = -4
+		sb.expand_margin_bottom = 4
+	elif hover:
+		sb.expand_margin_top = 2
+		sb.expand_margin_bottom = -2
+	return sb
+
+
+## A rounded chip: "Year 1", "2×2", "+2 Calm", personality and quirk tags.
+static func chip(text: String, bg: Color, border := Color(0, 0, 0, 0), size := TEXT_XS, weight := 600, fg := INK, radius := 6) -> PanelContainer:
 	var p := PanelContainer.new()
-	var sb := flat_box(bg, border, 2 if border.a > 0 else 0, 10, 0)
-	sb.content_margin_left = 9
-	sb.content_margin_right = 9
-	sb.content_margin_top = 2
-	sb.content_margin_bottom = 2
+	var sb := flat_box(bg, border, 2 if border.a > 0 else 0, radius, 0)
+	sb.content_margin_left = 8
+	sb.content_margin_right = 8
+	sb.content_margin_top = 3
+	sb.content_margin_bottom = 3
 	p.add_theme_stylebox_override("panel", sb)
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	p.add_child(label(text, size, weight, fg))
 	return p
 
 
-## A strip of washi tape on a paper's top edge. Returns an overlay Control (containers
-## stretch their children, so the strip itself sits inside it at a free position).
-## Add it after the paper's content so it draws on top.
-static func tape(at_x: float, angle_deg := -3.0, color := WASHI_BLUE, width := 72.0) -> Control:
+## An effect chip (ItemCard): lime-light pill with a deep-green rim.
+static func effect_chip(text: String) -> PanelContainer:
+	return chip(text, LIME_LIGHT, GREEN_DEEP, TEXT_XS, 600, INK, 999)
+
+
+# --- Decorations (overlays: add after the content so they draw on top) -------------
+
+## A strip of washi tape on a paper's edge. Returns an overlay Control.
+static func tape(at_x: float, angle_deg := -4.0, color: Variant = "honey", width := 96.0, pattern := "stripes", at_y := -12.0) -> Control:
 	var W = load("res://scripts/ui/widgets.gd")
-	var overlay := Control.new()
-	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var t: Control = W.Washi.new(color, Vector2(width, 22))
-	t.position = Vector2(at_x, -12)
+	var o := overlay()
+	var c: Color = TAPE_COLORS.get(color, HONEY) if color is String else color
+	var t: Control = W.Washi.new(c, Vector2(width, 26), pattern)
+	t.position = Vector2(at_x, at_y)
 	t.rotation_degrees = angle_deg
-	overlay.add_child(t)
-	return overlay
+	o.add_child(t)
+	return o
 
 
-## A blue square pin in a paper's corner (an overlay, like tape).
-static func pin(at: Vector2, color := PIN_BLUE, px := 30.0) -> Control:
+## Tape on both top corners (PaperCard tape="corners"); `w` = the paper's width.
+static func tape_corners(w: float, color: Variant = "honey") -> Control:
 	var W = load("res://scripts/ui/widgets.gd")
-	var overlay := Control.new()
-	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var p: Control = W.Pin.new(color, px)
-	p.position = at
-	overlay.add_child(p)
-	return overlay
+	var o := overlay()
+	var c: Color = TAPE_COLORS.get(color, HONEY) if color is String else color
+	var a: Control = W.Washi.new(c, Vector2(64, 26), "stripes")
+	a.position = Vector2(-20, -2)
+	a.rotation_degrees = -38
+	o.add_child(a)
+	var b: Control = W.Washi.new(c, Vector2(64, 26), "stripes")
+	b.position = Vector2(w - 44, -2 - 40)
+	b.rotation_degrees = 38
+	o.add_child(b)
+	return o
 
 
-## A free-positioning layer inside a container (stamps on a form, tape on a note).
+## The blue paperclip (PaperCard clip): top right of a paper, `w` = its width.
+static func clip(w: float, right := 16.0) -> Control:
+	var W = load("res://scripts/ui/widgets.gd")
+	var o := overlay()
+	var ic: Control = W.Icon.new("paperclip", 46, SKY, "bold", true)
+	ic.position = Vector2(w - right - 46, -18)
+	ic.rotation_degrees = 18
+	o.add_child(ic)
+	return o
+
+
+static func pin(at: Vector2, _color := SKY, _px := 30.0) -> Control:
+	var o := overlay()
+	var W = load("res://scripts/ui/widgets.gd")
+	var ic: Control = W.Icon.new("paperclip", 46, SKY, "bold", true)
+	ic.position = at
+	ic.rotation_degrees = 18
+	o.add_child(ic)
+	return o
+
+
 static func overlay() -> Control:
 	var o := Control.new()
 	o.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -382,55 +503,6 @@ static func ui_tween(node: Node) -> Tween:
 	return tw
 
 
-# --- Drawn textures (slider knob, toggle pill) --------------------------------------
-
-## A white round knob with an ink ring, drawn into a texture for HSlider.
-static func knob_texture(px := 30, hot := false) -> Texture2D:
-	var key := "knob%d%s" % [px, hot]
-	if _textures.has(key):
-		return _textures[key]
-	var img := Image.create(px, px, false, Image.FORMAT_RGBA8)
-	var c := Vector2(px, px) / 2.0
-	var r := px / 2.0 - 1.0
-	for y in px:
-		for x in px:
-			var d := Vector2(x + 0.5, y + 0.5).distance_to(c)
-			var col := Color(0, 0, 0, 0)
-			if d <= r:
-				col = INK if d > r - 3.0 else (Color("FFFDF5") if not hot else Color("FFF4C8"))
-				col.a = clampf(r - d + 0.5, 0.0, 1.0)
-			img.set_pixel(x, y, col)
-	var tex := ImageTexture.create_from_image(img)
-	_textures[key] = tex
-	return tex
-
-
-## The toggle pill: green with the knob right when on, sand with the knob left when off.
-static func pill_texture(on: bool, w := 58, h := 32) -> Texture2D:
-	var key := "pill%s" % on
-	if _textures.has(key):
-		return _textures[key]
-	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
-	var r := h / 2.0 - 1.0
-	var a := Vector2(r + 1.0, h / 2.0)
-	var b := Vector2(w - r - 1.0, h / 2.0)
-	var knob := b if on else a
-	var fill := OK_GREEN if on else TRACK
-	for y in h:
-		for x in w:
-			var p := Vector2(x + 0.5, y + 0.5)
-			var q := Vector2(clampf(p.x, a.x, b.x), a.y)
-			var d := p.distance_to(q)
-			var col := Color(0, 0, 0, 0)
-			if d <= r:
-				col = INK if d > r - 2.5 else fill
-				var kd := p.distance_to(knob)
-				if kd < r - 5.0:
-					col = Color("FFFDF5")
-				elif kd < r - 3.5:
-					col = INK
-				col.a = clampf(r - d + 0.5, 0.0, 1.0)
-			img.set_pixel(x, y, col)
-	var tex := ImageTexture.create_from_image(img)
-	_textures[key] = tex
-	return tex
+## The bouncy ease (--ease-bounce) for lifts and pops.
+static func bounce(tw: Tween) -> Tween:
+	return tw.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)

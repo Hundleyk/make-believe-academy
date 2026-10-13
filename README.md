@@ -7,21 +7,26 @@ Godot Project Manager → **Import** → pick `project.godot` in this folder →
 
 ## Starting
 The game opens on the **title screen**: New Game, Continue (your newest save), Load Game, Settings, Quit.
-New School brings Leo's letter: **Find a Helper** approves it, opens Requests, and clips his notes (the objectives) bottom left.
+**New School** asks which of the three save slots (cubbies) to use, empty or not, and lets you name the school.
+Then Leo's letter arrives: **Find a Helper** approves it, opens Requests, and clips his notes (the objectives) bottom left.
 
-The look follows the Make-Believe Academy design system (Game_Menus mockups 01-10): cardboard buttons with a lip,
-cream paper forms, washi tape and pins, a navy tab bar.
+**Requests have time limits:** answer a letter within 3 days of it arriving or it's gone (Kids' Trust -1); once
+answered, the friend has to be ready by Dream Night (day 7 for Leo). Days start moving with the day clock (week 4).
+
+The look is the Make-Believe Academy design system (tokens, components and mockups from Claude Design): PaperButtons
+on a wood under-edge, hand-cut paper, washi tape, paperclips, stamps, Phosphor sticker icons (MIT), the felt-patch
+badge. The UI's base size is the mockups' 1280x720; Godot scales it to the window.
 
 ## The HUD
 - **Top**: Giggles (left), the Term · Day banner with Pause, Faster, and Menu tiles (center), the Kids' Trust meter (right)
 - **Bottom**: Leo's clipped note (left), the tab bar: **Build (B)**, Timetable (T, week 4), **Students (P)**, Staff (H, M2), **Requests (R)**, quick-build tiles of your recent items (right)
-- **Build** menu: one tab per room plus Anywhere; big cards with price, size, and effect chips; Sell and Close
+- **Build** panel, docked left like Two Point and Let's School: a tab per room plus Anywhere, item cards with price, footprint, and effect chips; Sell and Close
 - **Students** drawer: click a student for their trading card (dot skill bars, personality, quirk, today's diary, could they help Leo?)
 - **Requests**: the Department form and "Who can help Leo?", every student ranked Very likely / Maybe / Unlikely; pick one to see why
 - **Esc** or **right-click** backs out one step: stop holding or selling, close the card, close the drawer, then the pause screen
 - **Space** pauses the students; **[** and **]** change speed
 - **Main menu**: Continue, New School, Load School, Settings, Credits, Quit (with a note asking you to stay)
-- **Pause** (Esc or the gear tile): Resume, Save School, Load School (3 slots with a picture of your school), Settings, Main Menu
+- **Pause** (Esc or the gear tile): Resume, Save School, Load School (3 slots with a picture of your school; Save School saves to the school's own slot), Settings, Main Menu
 - **Settings** (Apply to save): Audio volumes, Video (fullscreen, UI size, reduce motion), Gameplay (readable font, camera speed), Controls (key list)
 
 ## Controls

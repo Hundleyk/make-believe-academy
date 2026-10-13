@@ -1,9 +1,10 @@
 extends CanvasLayer
-## The HUD frame (design system mockups 07-10): the Giggles tag top left, the Term · Day
-## banner with pause and speed tiles top center, Kids' Trust top right, Leo's pinned note
-## bottom left, the navy tab bar bottom center, and the quick-build tiles bottom right.
-## Drawers (Build, Students, Requests) and the trading card open over the world;
-## full-screen screens (letters, pause, settings, title) sit on top of everything.
+## The HUD (design system: ui_kits/game and mockups 07-10), pinned to the corners with an
+## 18px inset: Giggles (CoinCounter) top left, the Term clock with toy buttons top center,
+## Kids' Trust (TrustMeter) top right, Leo's letter bottom left, the bottom menu bar bottom
+## center, and the quick-build catalog bottom right. Panels (Build, Students, Requests) and
+## the student card open over the world; full-screen screens sit on top of everything.
+## The UI's base size is 1280x720 (the mockups'); Godot scales it to the window.
 
 const Style := preload("res://scripts/ui/ui_style.gd")
 const W := preload("res://scripts/ui/widgets.gd")
@@ -14,15 +15,16 @@ const RequestsPanel := preload("res://scripts/ui/requests_panel.gd")
 const CrayonNotes := preload("res://scripts/ui/crayon_notes.gd")
 const Screens := preload("res://scripts/ui/screens.gd")
 
-## Bottom tabs: id, label, key, icon, what it says while it isn't built yet.
+## Bottom menu tabs: id, label, key, what it says while it isn't built yet.
 const TABS := [
-	["build", "Build", KEY_B, "hammer", ""],
-	["timetable", "Timetable", KEY_T, "calendar", "The Timetable arrives with the day clock (M1 week 4)."],
-	["students", "Students", KEY_P, "students", ""],   # P for pupils (S pans the camera)
-	["staff", "Staff", KEY_H, "staff", "Teachers and hiring arrive in M2."],
-	["requests", "Requests", KEY_R, "requests", ""],
+	["build", "Build", KEY_B, ""],
+	["timetable", "Timetable", KEY_T, "The Timetable arrives with the day clock (M1 week 4)."],
+	["students", "Students", KEY_P, ""],   # P for pupils (S pans the camera)
+	["staff", "Staff", KEY_H, "Teachers and hiring arrive in M2."],
+	["requests", "Requests", KEY_R, ""],
 ]
 const QUICK_SLOTS := 6
+const INSET := Style.HUD_INSET
 ## The Academy's calendar. Days arrive with the day clock (M1 week 4); until then it's day 1.
 const TERM := 1
 
@@ -41,17 +43,17 @@ var screens: Control
 var quick_items: Array[ItemData] = []   ## Recently picked items, newest first
 
 var _giggles_label: Label
-var _trust_label: Label
-var _trust_meter: Control
+var _trust_bar: Control
+var _trust_tag: Control
+var _clock: Control
 var _clock_title: Label
-var _clock_sub: Label
 var _clock_bar: Control
-var _speed_chip: Label
 var _pause_button: Button
-var _pause_icon: Control
+var _fast_button: Button
+var _speed_chip: PanelContainer
 var _hint_label: Label
-var _hint_panel: PanelContainer
-var _toast: PanelContainer
+var _hint_panel: Control
+var _toast: Control
 var _toast_title: Label
 var _toast_body: Label
 var _toast_flavor: Label
@@ -59,6 +61,7 @@ var _toast_busy := false
 var _tab_buttons := {}
 var _requests_badge: Label
 var _quick_grid: GridContainer
+var _quick_panel: Control
 var _refresh := 0.0
 
 
@@ -79,6 +82,8 @@ func setup(the_main: Node3D) -> void:
 	GameState.trust_changed.connect(func(_t): _update_top())
 	GameState.speed_changed.connect(func(_s): _update_top())
 	GameState.letter_accepted.connect(func(_l): _update_top())
+	GameState.letter_expired.connect(func(_l): _update_top())
+	GameState.day_changed.connect(func(_d): _update_top())
 	Settings.changed.connect(_on_settings_changed)
 	_update_top()
 	_on_drawer_changed(UI.drawer)
@@ -99,6 +104,8 @@ func rebuild() -> void:
 func _on_settings_changed() -> void:
 	if root != null and root.get_meta("readable", false) != Settings.readable_font:
 		rebuild.call_deferred()
+	if _hint_panel != null and is_instance_valid(_hint_panel):
+		_on_hint(build_mode._hint)
 
 
 func _build() -> void:
@@ -145,179 +152,155 @@ func _build() -> void:
 	root.add_child(screens)
 
 
-# --- Top bar ------------------------------------------------------------------------
+# --- CoinCounter (top left) ---------------------------------------------------------
 
 func _build_giggles() -> void:
 	var holder := Control.new()
-	holder.position = Vector2(16, 14)
+	holder.name = "Giggles"
+	holder.position = Vector2(INSET, INSET)
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(holder)
-	var tag := Style.paper_panel(0)
-	var sb := Style.paper_box(0, 4)
-	sb.content_margin_left = 66
-	sb.content_margin_right = 22
-	sb.content_margin_top = 8
-	sb.content_margin_bottom = 8
-	tag.add_theme_stylebox_override("panel", sb)
-	tag.position = Vector2(30, 8)
-	tag.rotation_degrees = -1.0
+	var tag := W.Paper.new("paper", Vector4(8, 26, 10, 44), "b")
+	tag.position = Vector2(46, 4)
+	tag.mouse_filter = Control.MOUSE_FILTER_PASS
 	tag.tooltip_text = "Giggles are the Academy's money.\nHappy students giggle (+2 a period at Fun 7+); finding a combo pays a 25-Giggle grant."
 	holder.add_child(tag)
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", -6)
+	col.add_theme_constant_override("separation", 2)
 	tag.add_child(col)
-	col.add_child(Style.label("Giggles", 17, 600))
+	col.add_child(Style.label("Giggles", 18, 600))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	col.add_child(row)
-	var small := W.Coin.new(22, false)
+	var small := W.Coin.new(22)
 	small.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(small)
-	_giggles_label = Style.label("500", 32, 700)
+	_giggles_label = Style.label("500", 28, 700)
 	row.add_child(_giggles_label)
-	var coin := W.Coin.new(78)
-	coin.position = Vector2(0, 0)
+	var coin := W.Coin.new(78, true, -8)
+	coin.big_shadow = true
 	holder.add_child(coin)
 
 
+# --- TermClock and toy buttons (top center) -----------------------------------------
+
 func _build_clock() -> void:
-	var holder := VBoxContainer.new()
-	holder.name = "Clock"
-	holder.add_theme_constant_override("separation", 6)
-	holder.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE, 10)
-	holder.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(holder)
-	var banner := W.Paper.new(Style.PAPER, 0, 2.0, 7)
-	var bsb := StyleBoxEmpty.new()
-	bsb.content_margin_left = 30
-	bsb.content_margin_right = 30
-	bsb.content_margin_top = 8
-	bsb.content_margin_bottom = 10
-	banner.add_theme_stylebox_override("panel", bsb)
-	banner.custom_minimum_size = Vector2(400, 0)
-	banner.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	banner.mouse_filter = Control.MOUSE_FILTER_PASS
-	holder.add_child(banner)
+	_clock = VBoxContainer.new()
+	_clock.name = "Clock"
+	_clock.add_theme_constant_override("separation", 14)
+	_clock.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE, 14)
+	_clock.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_clock.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(_clock)
+	var card := W.Paper.new("paper", Vector4(12, 30, 18, 30), "a")
+	card.custom_minimum_size = Vector2(340, 0)
+	card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	card.mouse_filter = Control.MOUSE_FILTER_PASS
+	_clock.add_child(card)
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 4)
-	banner.add_child(col)
-	_clock_title = Style.label("Term 1 · Day 1", 27, 700)
+	col.add_theme_constant_override("separation", 10)
+	card.add_child(col)
+	_clock_title = Style.label("Term 1 · Day 1", 26, 600)
 	_clock_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(_clock_title)
-	_clock_bar = W.Meter.new(Vector2(330, 18), false, true)
-	_clock_bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_clock_bar = W.ClockBar.new(Vector2(280, 16))
 	col.add_child(_clock_bar)
-	_clock_sub = Style.hand_label("", 17, Style.INK_SOFT)
-	_clock_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	col.add_child(_clock_sub)
-	banner.add_child(Style.tape(-18, -28, Style.WASHI_BLUE, 54))
-	var right_tape := Style.tape(364, 28, Style.WASHI_BLUE, 54)
-	banner.add_child(right_tape)
+	card.add_child(Style.tape_corners(340, "sky"))
 
-	var tiles := HBoxContainer.new()
-	tiles.add_theme_constant_override("separation", 10)
-	tiles.alignment = BoxContainer.ALIGNMENT_CENTER
-	tiles.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	holder.add_child(tiles)
-	_pause_button = _tile_button("pause", Style.HEART, "Pause or resume the students  (Space)")
-	_pause_icon = _pause_button.get_child(0)
+	var toys := HBoxContainer.new()
+	toys.add_theme_constant_override("separation", 10)
+	toys.alignment = BoxContainer.ALIGNMENT_CENTER
+	toys.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_clock.add_child(toys)
+	_pause_button = _toy_button("pause", Style.HEART, "Pause  (Space)")
 	_pause_button.pressed.connect(toggle_pause)
-	tiles.add_child(_pause_button)
-	var fast := _tile_button("fast", Style.OK_GREEN, "Faster: 1×, 2×, 3×  ( ] faster, [ slower )")
-	fast.pressed.connect(func():
+	toys.add_child(_pause_button)
+	_fast_button = _toy_button("fast-forward", Style.GREEN, "Fast forward: 1×, 2×, 3×  ( ] faster, [ slower )")
+	_fast_button.pressed.connect(func():
 		GameState.set_speed(1 if GameState.speed >= 3 or GameState.speed == 0 else GameState.speed + 1))
-	tiles.add_child(fast)
-	var menu := _tile_button("gear", Style.WOOD, "Pause menu: save, load, settings  (Esc)")
+	toys.add_child(_fast_button)
+	_speed_chip = Style.chip("2×", Style.LIME, Style.INK, 13, 700)
+	_speed_chip.position = Vector2(34, -8)
+	_speed_chip.rotation_degrees = 8
+	_fast_button.add_child(_speed_chip)
+	var menu := _toy_button("gear-six", Style.TAB_TAN, "Pause menu: save, load, settings  (Esc)")
+	menu.toggle_mode = false
 	menu.pressed.connect(func(): UI.open_screen("pause"))
-	tiles.add_child(menu)
-	_speed_chip = Style.label("1×", 15, 700)
-	var chip := PanelContainer.new()
-	var csb := Style.flat_box(Style.PAPER, Style.INK, 2, 10, 0)
-	csb.content_margin_left = 8
-	csb.content_margin_right = 8
-	chip.add_theme_stylebox_override("panel", csb)
-	chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	chip.add_child(_speed_chip)
-	tiles.add_child(chip)
+	toys.add_child(menu)
 
 
-## A square cardboard tile with a colored icon (pause, fast-forward, menu).
-func _tile_button(icon: String, color: Color, tip: String) -> Button:
+## A ToyButton: a 52px tan-light tile with a filled sticker icon; active presses down lime.
+func _toy_button(icon: String, color: Color, tip: String) -> Button:
 	var b := Button.new()
 	b.focus_mode = Control.FOCUS_NONE
-	b.custom_minimum_size = Vector2(54, 50)
+	b.custom_minimum_size = Vector2(52, 52)
 	b.tooltip_text = tip
-	b.add_theme_stylebox_override("normal", Style.lip_box(Style.TAB_TAN, true, false, false, false, 10))
-	b.add_theme_stylebox_override("hover", Style.lip_box(Style.TAB_TAN.lightened(0.12), true, false, false, false, 10))
-	b.add_theme_stylebox_override("pressed", Style.lip_box(Style.PAPER, false, true, true, false, 10))
-	b.add_theme_stylebox_override("hover_pressed", Style.lip_box(Style.PAPER, false, true, true, false, 10))
-	var ic := W.Icon.new(icon, 26, color)
+	b.toggle_mode = true
+	b.add_theme_stylebox_override("normal", Style.toy_box(false, false))
+	b.add_theme_stylebox_override("hover", Style.toy_box(false, true))
+	b.add_theme_stylebox_override("pressed", Style.toy_box(true))
+	b.add_theme_stylebox_override("hover_pressed", Style.toy_box(true))
+	var ic := W.Icon.new(icon, 29, color, "fill", true)
 	ic.set_anchors_preset(Control.PRESET_CENTER)
-	ic.offset_left = -13
-	ic.offset_right = 13
-	ic.offset_top = -15
-	ic.offset_bottom = 11
+	ic.offset_left = -14.5
+	ic.offset_right = 14.5
+	ic.offset_top = -14.5
+	ic.offset_bottom = 14.5
 	b.add_child(ic)
+	b.toggled.connect(func(on: bool):
+		ic.offset_top = -14.5 + (4 if on else 0)
+		ic.offset_bottom = 14.5 + (4 if on else 0))
 	return b
 
 
+# --- TrustMeter (top right) ---------------------------------------------------------
+
 func _build_trust() -> void:
-	var tag := W.Paper.new(Style.PAPER, 0, 2.0, 11)
-	var sb := StyleBoxEmpty.new()
-	sb.content_margin_left = 18
-	sb.content_margin_right = 20
-	sb.content_margin_top = 10
-	sb.content_margin_bottom = 14
-	tag.add_theme_stylebox_override("panel", sb)
-	tag.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 18)
-	tag.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	tag.rotation_degrees = 0.8
-	tag.tooltip_text = "Kids' Trust is the Academy's health.\nGreat postcards raise it; unanswered letters lower it. At 0 the Department gets worried."
-	root.add_child(tag)
+	var card := W.Paper.new("paper", Vector4(14, 22, 20, 22), "b", -1.0)
+	card.name = "Trust"
+	card.custom_minimum_size = Vector2(280, 0)
+	card.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, INSET)
+	card.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	card.mouse_filter = Control.MOUSE_FILTER_PASS
+	root.add_child(card)
+	_trust_tag = card
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 2)
-	tag.add_child(col)
-	var head := HBoxContainer.new()
-	col.add_child(head)
-	var t := Style.label("Kids' Trust", 22, 700)
-	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_theme_constant_override("separation", 6)
+	card.add_child(col)
+	var t := Style.label("Kids' Trust", 24, 600)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	head.add_child(t)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 0)
+	col.add_child(t)
+	var row := Control.new()
+	row.custom_minimum_size = Vector2(236, 54)
 	col.add_child(row)
-	var heart := W.Heart.new(true)
-	heart.custom_minimum_size = Vector2(42, 38)
+	_trust_bar = W.TrustBar.new(Vector2(236 - 36, 24))
+	_trust_bar.position = Vector2(36, 15)
+	row.add_child(_trust_bar)
+	var heart := W.Icon.new("heart", 54, Style.HEART, "fill", true)
 	row.add_child(heart)
-	_trust_meter = W.Meter.new(Vector2(190, 22), true, false)
-	_trust_meter.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(_trust_meter)
-	_trust_label = Style.label("5 of 10", 13, 600, Style.INK_SOFT)
-	_trust_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	col.add_child(_trust_label)
-	var clip := W.Paperclip.new(Vector2(18, 42))
-	var o := Style.overlay()
-	clip.position = Vector2(232, -20)
-	o.add_child(clip)
-	tag.add_child(o)
+	if not Settings.reduce_motion:
+		var tw := Style.ui_tween(heart).set_loops()
+		tw.tween_property(heart, "scale", Vector2(1.12, 1.12), 0.24).set_trans(Tween.TRANS_SINE)
+		tw.tween_property(heart, "scale", Vector2.ONE, 0.24).set_trans(Tween.TRANS_SINE)
+		tw.tween_interval(1.1)
+	card.add_child(Style.clip(280))
 
 
 func _update_top() -> void:
 	if root == null:
 		return
 	_giggles_label.text = _comma(GameState.giggles)
-	_trust_label.text = "%d of 10" % GameState.trust
-	_trust_meter.set_value(GameState.trust / 10.0)
+	_trust_bar.set_values(GameState.trust / 10.0)
+	_trust_tag.tooltip_text = "Kids' Trust: %d of 10. The Academy's health.\nGreat postcards raise it; unanswered letters lower it. At 0 the Department gets worried." % GameState.trust
 	var paused := GameState.speed == 0
-	_pause_button.toggle_mode = true
 	_pause_button.set_pressed_no_signal(paused)
-	_pause_icon.shape = "play" if paused else "pause"
-	_pause_icon.queue_redraw()
-	_speed_chip.text = "paused" if paused else "%d×" % GameState.speed
+	_pause_button.toggled.emit(paused)
+	_fast_button.set_pressed_no_signal(GameState.speed > 1)
+	_fast_button.toggled.emit(GameState.speed > 1)
+	_speed_chip.visible = GameState.speed > 1
+	(_speed_chip.get_child(0) as Label).text = "%d×" % GameState.speed
 	var waiting := 0
-	for l in main.letters:
+	for l in main.open_letters():
 		if not GameState.accepted_letters.has(l):
 			waiting += 1
 	if _requests_badge != null:
@@ -335,7 +318,7 @@ func toggle_pause() -> void:
 
 ## "Term 1 · Day 1" (shared with the title screen and save slots).
 static func day_text() -> String:
-	return "Term %d · Day %d" % [TERM, 1]
+	return "Term %d · Day %d" % [TERM, GameState.day]
 
 
 func _process(delta: float) -> void:
@@ -345,8 +328,7 @@ func _process(delta: float) -> void:
 	_refresh = 0.2
 	_clock_title.text = day_text()
 	_clock_bar.set_value(1.0 - students.period_left / students.period_seconds)
-	_clock_sub.text = "free time · period %d" % students.period
-	_clock_bar.tooltip_text = "Period %d: needs change in %ds" % [students.period, ceili(maxf(students.period_left, 0.0))]
+	_clock_bar.tooltip_text = "Free time · period %d. Needs change in %ds." % [students.period, ceili(maxf(students.period_left, 0.0))]
 
 
 static func _comma(n: int) -> String:
@@ -358,35 +340,34 @@ static func _comma(n: int) -> String:
 	return ("-" if n < 0 else "") + s + out
 
 
-# --- Toasts and hint ----------------------------------------------------------------
+# --- Toasts and the hint slip -------------------------------------------------------
 
 func _build_toast() -> void:
-	_toast = PanelContainer.new()
-	_toast.add_theme_stylebox_override("panel", Style.paper_box(14, 6))
-	_toast.custom_minimum_size = Vector2(400, 0)
-	_toast.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE, 172)
-	_toast.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_toast.rotation_degrees = 0.8
-	_toast.visible = false
-	root.add_child(_toast)
+	var card := W.Paper.new("paper", Vector4(18, 24, 18, 24), "a", 1.0)
+	card.custom_minimum_size = Vector2(380, 0)
+	card.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE, 160)
+	card.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.visible = false
+	root.add_child(card)
+	_toast = card
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 2)
-	_toast.add_child(col)
-	_toast_title = Style.label("", 20, 700)
+	col.add_theme_constant_override("separation", 4)
+	card.add_child(col)
+	_toast_title = Style.label("", 22, 600)
 	_toast_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(_toast_title)
-	_toast_body = Style.label("", 15)
+	_toast_body = Style.label("", 15, 500, Style.INK_SOFT)
 	_toast_body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_toast_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_toast_body.custom_minimum_size.x = 370
+	_toast_body.custom_minimum_size.x = 330
 	col.add_child(_toast_body)
-	_toast_flavor = Style.hand_label("", 19, Style.CRAYON_PURPLE)
+	_toast_flavor = Style.hand_label("", 20, Style.INK)
 	_toast_flavor.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_toast_flavor.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_toast_flavor.custom_minimum_size.x = 370
+	_toast_flavor.custom_minimum_size.x = 330
 	col.add_child(_toast_flavor)
-	_toast.add_child(Style.tape(164, 2, Style.WASHI_PINK))
+	card.add_child(Style.tape(142, -4, "honey"))
 
 
 ## Show the next queued toast: one at a time, four seconds each, never during a moment.
@@ -404,27 +385,23 @@ func _next_toast() -> void:
 	_toast_flavor.visible = flavor != ""
 	_toast.visible = true
 	_toast.modulate.a = 0.0
+	_toast.scale = Vector2(0.9, 0.9) if not Settings.reduce_motion else Vector2.ONE
 	var tw := Style.ui_tween(_toast)
-	tw.tween_property(_toast, "modulate:a", 1.0, 0.2)
+	tw.tween_property(_toast, "modulate:a", 1.0, 0.12)
+	tw.parallel().tween_property(_toast, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.tween_interval(4.0)
-	tw.tween_property(_toast, "modulate:a", 0.0, 0.5)
+	tw.tween_property(_toast, "modulate:a", 0.0, 0.42)
 	tw.tween_callback(func():
 		_toast.visible = false
 		_toast_busy = false
 		_next_toast())
 
 
-## The hint slip above the tab bar (hover hints, holding an item, selling).
-## While the Build menu is open its footer shows the hint instead.
+## Hover hints and building help, above the bottom menu. The Build panel shows them in its
+## footer instead. Teacher Hints off hides it.
 func _build_hint() -> void:
-	_hint_panel = PanelContainer.new()
-	var sb := Style.paper_box(0, 10)
-	sb.content_margin_left = 16
-	sb.content_margin_right = 16
-	sb.content_margin_top = 6
-	sb.content_margin_bottom = 8
-	_hint_panel.add_theme_stylebox_override("panel", sb)
-	_hint_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE, 136)
+	_hint_panel = W.Paper.new("paper", Vector4(8, 18, 10, 18), "b")
+	_hint_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE, 132)
 	_hint_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_hint_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_hint_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -436,16 +413,16 @@ func _build_hint() -> void:
 
 
 func _on_hint(t: String) -> void:
-	if _hint_label == null:
+	if _hint_label == null or not is_instance_valid(_hint_label):
 		return
 	_hint_label.text = t
 	var idle := t.begins_with("Pick an item")
-	_hint_panel.visible = t != "" and not idle and UI.drawer != "build" and UI.drawer != "requests"
-	if build_menu != null:
+	_hint_panel.visible = Settings.teacher_hints and t != "" and not idle and UI.drawer != "build" and UI.drawer != "requests"
+	if build_menu != null and is_instance_valid(build_menu):
 		build_menu.set_hint(t)
 
 
-# --- Quick build tiles (bottom right) -----------------------------------------------
+# --- Quick-build catalog (bottom right) ---------------------------------------------
 
 func _seed_quick() -> void:
 	quick_items.clear()
@@ -473,19 +450,20 @@ func _on_holding(d: ItemData) -> void:
 func _build_quick() -> void:
 	var panel := PanelContainer.new()
 	panel.name = "QuickBuild"
-	var sb := Style.lip_box(Color("F6E6CC"), true, false, false, false, 14)
-	sb.set_content_margin_all(10)
-	sb.content_margin_bottom = 14
+	var sb := Style.button_box("tan", "normal", Vector2(10, 10))
+	sb.bg_color = Style.TAB_TAN_LIGHT
 	panel.add_theme_stylebox_override("panel", sb)
-	panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 16)
+	panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, INSET)
+	panel.offset_bottom = -INSET - 4
 	panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	panel.tooltip_text = "Quick build: your recent items"
 	root.add_child(panel)
+	_quick_panel = panel
 	_quick_grid = GridContainer.new()
 	_quick_grid.columns = 3
 	_quick_grid.add_theme_constant_override("h_separation", 8)
-	_quick_grid.add_theme_constant_override("v_separation", 8)
+	_quick_grid.add_theme_constant_override("v_separation", 10)
 	panel.add_child(_quick_grid)
 	_refresh_quick()
 
@@ -498,21 +476,27 @@ func _refresh_quick() -> void:
 	for i in QUICK_SLOTS:
 		var b := Button.new()
 		b.focus_mode = Control.FOCUS_NONE
-		b.custom_minimum_size = Vector2(56, 56)
+		b.custom_minimum_size = Vector2(52, 52)
 		if i < quick_items.size():
 			var d: ItemData = quick_items[i]
-			var bg := d.gray_color.lightened(0.45)
-			b.add_theme_stylebox_override("normal", Style.lip_box(bg, true, false, false, false, 10))
-			b.add_theme_stylebox_override("hover", Style.lip_box(bg.lightened(0.2), true, false, false, false, 10))
-			b.add_theme_stylebox_override("pressed", Style.lip_box(Style.PAPER, false, true, true, false, 10))
-			b.add_theme_stylebox_override("disabled", Style.lip_box(bg.lerp(Style.DESK, 0.6), true, false, false, true, 10))
+			var tint := W.ItemIcon.item_tint(d)
+			for st in ["normal", "hover", "pressed", "disabled"]:
+				var state: String = "selected" if st == "pressed" else st
+				var s := Style.button_box("tan", state, Vector2(4, 4))
+				if st == "normal":
+					s.bg_color = tint
+				elif st == "hover":
+					s.bg_color = tint.lightened(0.25)
+				if st != "pressed":
+					s.shadow_offset = Vector2(0, 3)
+				b.add_theme_stylebox_override(st, s)
 			b.tooltip_text = "%s · %d Giggles\n%s" % [d.display_name, d.cost, d.effect_text]
-			var icon := W.ItemIcon.new(d)
+			var icon := W.ItemIcon.new(d, 32)
 			icon.set_anchors_preset(Control.PRESET_CENTER)
-			icon.offset_left = -15
-			icon.offset_right = 15
-			icon.offset_top = -17
-			icon.offset_bottom = 13
+			icon.offset_left = -16
+			icon.offset_right = 16
+			icon.offset_top = -16
+			icon.offset_bottom = 16
 			b.add_child(icon)
 			b.pressed.connect(func():
 				if build_mode.holding == d:
@@ -523,81 +507,81 @@ func _refresh_quick() -> void:
 					build_mode.start_holding(d))
 		else:
 			b.disabled = true
-			b.add_theme_stylebox_override("disabled", Style.flat_box(Color(Style.TRACK, 0.5), Style.PAPER_EDGE, 2, 10, 0))
+			b.add_theme_stylebox_override("disabled", Style.flat_box(Color(Style.PAPER_SHADOW, 0.6), Color(0, 0, 0, 0), 0, 10, 0))
 		_quick_grid.add_child(b)
 
 
-# --- Bottom tab bar and drawers -----------------------------------------------------
+# --- BottomMenu (bottom center) -----------------------------------------------------
 
 func _build_tabs() -> void:
-	var bar := PanelContainer.new()
+	var tile := Vector2(96, 76)
+	var gap := 18.0
+	var width := TABS.size() * tile.x + (TABS.size() - 1) * gap + 52.0
+	var bar := Control.new()
 	bar.name = "Tabs"
-	var sb := Style.flat_box(Style.NAVY, Color(0, 0, 0, 0), 0, 22, 0)
-	sb.corner_radius_bottom_left = 0
-	sb.corner_radius_bottom_right = 0
-	sb.content_margin_left = 22
-	sb.content_margin_right = 22
-	sb.content_margin_top = 10
-	sb.content_margin_bottom = 8
-	sb.shadow_color = Color(Style.NIGHT, 0.3)
-	sb.shadow_size = 8
-	bar.add_theme_stylebox_override("panel", sb)
+	bar.custom_minimum_size = Vector2(width, 112)
 	bar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE, 0)
 	bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(bar)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 14)
-	bar.add_child(row)
-	for t in TABS:
-		var col := VBoxContainer.new()
-		col.add_theme_constant_override("separation", 2)
-		row.add_child(col)
+	var dock := Panel.new()
+	var sb := Style.flat_box(Style.INDIGO, Style.LAVENDER, 0, 24, 0)
+	sb.corner_radius_bottom_left = 0
+	sb.corner_radius_bottom_right = 0
+	sb.border_width_top = 4
+	dock.add_theme_stylebox_override("panel", sb)
+	dock.position = Vector2(0, 34)
+	dock.size = Vector2(width, 112 - 34)
+	dock.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar.add_child(dock)
+	for i in TABS.size():
+		var t: Array = TABS[i]
+		var slot := Control.new()
+		slot.position = Vector2(26 + i * (tile.x + gap), 4)
+		slot.size = Vector2(tile.x, 104)
+		slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bar.add_child(slot)
 		var b := Button.new()
 		b.toggle_mode = true
 		b.focus_mode = Control.FOCUS_NONE
-		b.custom_minimum_size = Vector2(80, 70)
-		b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		var tile := Color("F4D9B6")
-		b.add_theme_stylebox_override("normal", Style.lip_box(tile, true, false, false, false, 12))
-		b.add_theme_stylebox_override("hover", Style.lip_box(tile.lightened(0.15), true, false, false, false, 12))
-		b.add_theme_stylebox_override("pressed", Style.lip_box(Style.PAPER, false, false, true, false, 12))
-		b.add_theme_stylebox_override("hover_pressed", Style.lip_box(Style.PAPER, false, false, true, false, 12))
-		b.add_theme_stylebox_override("disabled", Style.lip_box(tile.lerp(Style.NAVY, 0.35), true, false, false, true, 12))
-		var inner := PanelContainer.new()
-		inner.add_theme_stylebox_override("panel", Style.flat_box(Style.TAB_COLORS[t[0]], Style.INK, 2, 6, 0))
-		inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		inner.set_anchors_preset(Control.PRESET_CENTER)
-		inner.offset_left = -21
-		inner.offset_right = 21
-		inner.offset_top = -24
-		inner.offset_bottom = 18
-		b.add_child(inner)
-		var ic := W.Icon.new(t[3], 26, Style.PAPER)
-		ic.set_anchors_preset(Control.PRESET_CENTER)
-		ic.offset_left = -13
-		ic.offset_right = 13
-		ic.offset_top = -16
-		ic.offset_bottom = 10
+		b.size = tile
+		b.pivot_offset = tile / 2.0
+		var face := Style.button_box("tan", "normal", Vector2.ZERO)
+		face.bg_color = Style.TAB_TAN_LIGHT
+		var hover := Style.button_box("paper", "normal", Vector2.ZERO)
+		var sel := Style.button_box("paper", "selected", Vector2.ZERO)
+		sel.expand_margin_top = 0
+		sel.expand_margin_bottom = 0
+		b.add_theme_stylebox_override("normal", face)
+		b.add_theme_stylebox_override("hover", hover)
+		b.add_theme_stylebox_override("pressed", sel)
+		b.add_theme_stylebox_override("hover_pressed", sel)
+		b.add_theme_stylebox_override("disabled", face)
+		var spec: Array = Style.TAB_ICONS[t[0]]
+		var ic := W.Icon.new(spec[0], 44, spec[1], "fill", true)
+		ic.position = (tile - Vector2(44, 44)) / 2.0
 		b.add_child(ic)
 		var key := OS.get_keycode_string(t[2])
-		if t[4] != "":
+		if t[3] != "":
 			b.disabled = true
-			b.tooltip_text = t[4]
-			col.modulate.a = 0.6
+			b.tooltip_text = t[3]
+			slot.modulate = Color(1, 1, 1, 0.62)
 		else:
 			b.tooltip_text = "%s  (%s)" % [t[1], key]
 			b.pressed.connect(UI.toggle_drawer.bind(t[0]))
-		col.add_child(b)
-		var l := Style.label(t[1], 17, 600, Style.PAPER)
+		slot.add_child(b)
+		var l := Style.label(t[1], 18, 600, Style.PAPER)
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		col.add_child(l)
+		l.position = Vector2(-10, tile.y + 6)
+		l.size = Vector2(tile.x + 20, 22)
+		slot.add_child(l)
 		_tab_buttons[t[0]] = b
 		if t[0] == "requests":
 			var badge := PanelContainer.new()
-			badge.add_theme_stylebox_override("panel", Style.flat_box(Style.HEART, Style.PAPER, 2, 12, 0))
+			badge.add_theme_stylebox_override("panel", Style.flat_box(Style.HEART, Style.INK, 3, 13, 0))
 			badge.custom_minimum_size = Vector2(26, 26)
-			badge.position = Vector2(64, -12)
+			badge.position = Vector2(tile.x - 16, -10)
 			badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			_requests_badge = Style.label("1", 14, 700, Style.PAPER)
 			_requests_badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -610,11 +594,35 @@ func _on_drawer_changed(id: String) -> void:
 	if root == null:
 		return
 	for t in _tab_buttons:
-		_tab_buttons[t].set_pressed_no_signal(t == id)
+		var b: Button = _tab_buttons[t]
+		var on: bool = t == id
+		b.set_pressed_no_signal(on)
+		var y := -10.0 if on else 0.0
+		var rot := -2.0 if on else 0.0
+		if Settings.reduce_motion or not b.is_inside_tree():
+			b.position.y = y
+			b.rotation_degrees = rot
+		else:
+			var tw := Style.ui_tween(b).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT).set_parallel()
+			tw.tween_property(b, "position:y", y, 0.22)
+			tw.tween_property(b, "rotation_degrees", rot, 0.22)
 	_show(build_menu, id == "build")
 	_show(students_panel, id == "students")
 	_show(requests_panel, id == "requests")
-	crayon_notes.visible = id != "requests" and crayon_notes.letter != null
+	crayon_notes.visible = id == "" and crayon_notes.letter != null
+	_clock.visible = id != "requests"   # mockup 10: the request form takes the top
+	# The Build panel docks left (Two Point, Let's School); the bottom menu makes room.
+	var dock: Control = root.get_node_or_null("Tabs")
+	if dock != null:
+		var shift := 124.0 if id == "build" else 0.0
+		var w: float = dock.custom_minimum_size.x
+		if Settings.reduce_motion:
+			dock.offset_left = -w / 2.0 + shift
+			dock.offset_right = w / 2.0 + shift
+		else:
+			var tw := Style.ui_tween(dock).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT).set_parallel()
+			tw.tween_property(dock, "offset_left", -w / 2.0 + shift, 0.22)
+			tw.tween_property(dock, "offset_right", w / 2.0 + shift, 0.22)
 	if id == "students":
 		students_panel.refresh()
 	elif id == "requests":
@@ -631,12 +639,14 @@ func _on_card_changed(student: Node3D) -> void:
 		return
 	if student == null:
 		_show(trading_card, false)
+		_quick_panel.visible = true
 	else:
 		trading_card.show_student(student)
 		_show(trading_card, true)
+		_quick_panel.visible = false
 
 
-## Fade a drawer in or out (the tween runs even while the game is paused).
+## Fade a panel in or out (the tween runs even while the game is paused).
 func _show(c: Control, on: bool) -> void:
 	if c.visible == on:
 		return
@@ -652,8 +662,8 @@ func _show(c: Control, on: bool) -> void:
 func _on_screen_changed(id: String) -> void:
 	if root == null:
 		return
-	# Menus and moments sit over a dimmed HUD (mockups 01, 02, 05, 09); the Build menu,
-	# cards, and toasts step aside so the screen reads cleanly.
+	# Menus and moments sit over a dimmed HUD (mockups 01, 02, 05, 09); open panels and
+	# toasts step aside so the screen reads cleanly.
 	for c in [build_menu, students_panel, requests_panel, trading_card, _hint_panel, _toast]:
 		c.modulate.a = 0.0 if id != "" else 1.0
 	screens.show_screen(id)
@@ -690,7 +700,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		_:
 			var hit := false
 			for t in TABS:
-				if t[2] == event.physical_keycode and t[4] == "" and t[0] != "requests":
+				if t[2] == event.physical_keycode and t[3] == "" and t[0] != "requests":
 					UI.toggle_drawer(t[0])
 					hit = true
 			if not hit:

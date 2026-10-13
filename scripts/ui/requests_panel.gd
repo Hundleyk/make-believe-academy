@@ -1,8 +1,8 @@
 extends PanelContainer
-## Requests (mockup 10, "Who can help Leo?"): the Department form on the left, and every
-## student ranked by readiness on the right (Systems doc: readiness meter, matching).
-## Pick a friend to see why they would or wouldn't do; sending them waits for Dream Night.
-## A letter not yet read shows an "Open the letter" button on its form.
+## Requests (mockup 10, "Who can help Leo?"): cut paper with peach tape. The Department's
+## RequestForm on the left; on the right every student ranked by readiness (Systems doc:
+## readiness meter, matching), as helper rows with a skill bar and a placement mark. Pick a
+## friend to see why they would or wouldn't do; sending them waits for Dream Night.
 
 const Style := preload("res://scripts/ui/ui_style.gd")
 const W := preload("res://scripts/ui/widgets.gd")
@@ -24,36 +24,30 @@ var _refresh := 0.0
 func setup(the_hud: CanvasLayer) -> void:
 	hud = the_hud
 	name = "RequestsPanel"
-	var sb := Style.paper_box(0, 6)
-	sb.content_margin_left = 30
-	sb.content_margin_right = 30
-	sb.content_margin_top = 26
-	sb.content_margin_bottom = 22
-	add_theme_stylebox_override("panel", sb)
-	custom_minimum_size = Vector2(1180, 0)
-	set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_MINSIZE)
+	add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE, 110)
 	grow_horizontal = Control.GROW_DIRECTION_BOTH
-	grow_vertical = Control.GROW_DIRECTION_BOTH
-	offset_top += 16
-	offset_bottom += 16
 	visible = false
+	var paper := W.Paper.new("paper", Vector4(22, 26, 24, 26), "a")
+	add_child(paper)
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 34)
-	add_child(row)
+	row.add_theme_constant_override("separation", 30)
+	paper.add_child(row)
 	_form_holder = MarginContainer.new()
-	_form_holder.custom_minimum_size.x = 400
+	_form_holder.custom_minimum_size.x = 340
+	_form_holder.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	row.add_child(_form_holder)
 
 	var right := VBoxContainer.new()
-	right.add_theme_constant_override("separation", 12)
-	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right.add_theme_constant_override("separation", 14)
+	right.custom_minimum_size.x = 540
 	row.add_child(right)
 	var head := HBoxContainer.new()
 	right.add_child(head)
-	_title = Style.label("Who can help?", 32, 700)
+	_title = Style.label("Who can help?", 26, 600)
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(_title)
-	var close := Style.button("Close", 16, false, "close")
+	var close := Style.button("Close", "sm", false, "x")
 	close.tooltip_text = "Close Requests  (R or Esc)"
 	close.pressed.connect(UI.close_drawer)
 	head.add_child(close)
@@ -61,35 +55,37 @@ func setup(the_hud: CanvasLayer) -> void:
 	_tabs.add_theme_constant_override("separation", 8)
 	right.add_child(_tabs)
 	_body = VBoxContainer.new()
-	_body.add_theme_constant_override("separation", 12)
+	_body.add_theme_constant_override("separation", 14)
 	right.add_child(_body)
 	_why = VBoxContainer.new()
 	_why.add_theme_constant_override("separation", 2)
 	right.add_child(_why)
 	var foot := HBoxContainer.new()
-	foot.add_theme_constant_override("separation", 16)
+	foot.add_theme_constant_override("separation", 12)
 	right.add_child(foot)
-	_needs_line = Style.label("", 17, 500, Style.INK_SOFT)
+	_needs_line = Style.label("", 15, 500, Style.INK_SOFT)
 	_needs_line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_needs_line.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	foot.add_child(_needs_line)
-	_send = Style.button("Send a friend", 22, true, "letter")
-	_send.custom_minimum_size = Vector2(0, 62)
+	_send = Style.button("Send a friend", "lg", true, "paper-plane-tilt")
 	_send.disabled = true
 	_send.tooltip_text = "Friends are sent on Dream Night (M1 week 5).\nFor now: get them ready."
 	foot.add_child(_send)
-	add_child(Style.tape(560, -2, Style.WASHI_PINK, 140))
+	paper.add_child(Style.tape(130, -4, "peach"))
 
 
 func refresh() -> void:
-	var letters: Array = hud.main.letters
+	var letters: Array = hud.main.open_letters()
+	if current != null and not letters.has(current):
+		current = null
 	if current == null and not letters.is_empty():
 		current = letters[0]
 	for c in _tabs.get_children():
 		c.queue_free()
+	_tabs.visible = letters.size() > 1
 	if letters.size() > 1:
 		for l in letters:
-			var b := Style.tab_button("%s · %s %d" % [l.child, l.skill_name(), l.level], 14)
+			var b := Style.tab_button("%s · %s %d" % [l.child, l.skill_name(), l.level], "sm")
 			b.set_pressed_no_signal(l == current)
 			b.pressed.connect(func():
 				current = l
@@ -107,6 +103,9 @@ func refresh() -> void:
 		return
 	_form_holder.add_child(_form(current))
 	_title.text = "Who can help %s?" % current.child
+	var left := GameState.days_left(current)
+	_title.tooltip_text = "%d day%s left: %s" % [left, "" if left == 1 else "s", "be ready by Dream Night, day %d." % current.dream_day if GameState.accepted_letters.has(current) else "answer within %d days or the letter is gone (Kids' Trust -1)." % current.answer_days]
+	_title.mouse_filter = Control.MOUSE_FILTER_PASS
 	var ranked: Array = []
 	for s in hud.students.students:
 		ranked.append([s, Readiness.check(s, current)])
@@ -117,8 +116,9 @@ func refresh() -> void:
 	if picked == null or not is_instance_valid(picked):
 		picked = ranked[0][0] if not ranked.is_empty() else null
 	for r in ranked:
-		_body.add_child(_friend_row(r[0], r[1]))
-	_needs_line.text = "Needs %s %d or more · pairs best with a %s friend" % [current.skill_name(), current.level, current.best_trait]
+		_body.add_child(_helper_row(r[0], r[1]))
+	_needs_line.text = "Needs %s %d or more" % [current.skill_name(), current.level]
+	_needs_line.tooltip_text = "Pairs best with a %s friend." % current.best_trait
 	if picked != null:
 		_send.text = "Send %s" % picked.data.display_name
 		var pr := Readiness.check(picked, current)
@@ -127,95 +127,115 @@ func refresh() -> void:
 			line.add_theme_constant_override("separation", 8)
 			match reason[0]:
 				"ok":
-					line.add_child(W.Badge.new(true, 18))
+					line.add_child(W.PlacementMark.new(true, 16))
 				"bad":
-					line.add_child(W.Badge.new(false, 18))
+					line.add_child(W.PlacementMark.new(false, 16))
 				_:
-					line.add_child(W.Note.new(18))
-			line.add_child(Style.label(reason[1], 15))
+					line.add_child(W.Note.new(16))
+			line.add_child(Style.label(reason[1], 14, 500, Style.INK_SOFT))
 			_why.add_child(line)
 
 
-## The Department of Imaginary Affairs form for a letter (left side).
+## The Department form (components/paper/RequestForm.jsx).
 func _form(l: LetterData) -> Control:
 	var accepted := GameState.accepted_letters.has(l)
-	var paper := W.Paper.new(Style.FORM, 26, 2.5, 21)
-	paper.rotation_degrees = -0.6
+	var paper := W.Paper.new("paper", Vector4(22, 26, 26, 26), "a", 0.0, true)
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 6)
+	col.add_theme_constant_override("separation", 0)
 	paper.add_child(col)
-	var dept := Style.caps("Department of Imaginary Affairs", 14, Style.WOOD)
+	var dept := Label.new()
+	dept.text = "DEPARTMENT OF IMAGINARY AFFAIRS"
+	dept.add_theme_font_override("font", Style.font(700, 1))
+	dept.add_theme_font_size_override("font_size", 13)
+	dept.add_theme_color_override("font_color", Style.WOOD)
 	dept.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	dept.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	dept.custom_minimum_size.x = 280
 	col.add_child(dept)
-	var rule := W.Dashed.new(Style.WOOD)
+	var gap := Control.new()
+	gap.custom_minimum_size.y = 10
+	col.add_child(gap)
+	var rule := W.Dashed.new(Style.CARDBOARD, 2.0)
 	rule.custom_minimum_size = Vector2(0, 2)
 	col.add_child(rule)
 	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 12)
 	col.add_child(head)
-	var t := Style.label("Request for\n%s" % l.skill_name(), 26, 700)
+	var t := Style.label("Request for\n%s" % l.skill_name(), 22, 600)
 	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(t)
-	var no := Style.label("Form 7-%s" % l.skill_name().left(1), 15, 600, Style.INK_SOFT)
+	var no := Style.label("Form 7-%s" % l.skill_name().left(1), 13, 600, Style.INK_SOFT)
 	no.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	head.add_child(no)
-	_field(col, "From", "%s, age %d" % [l.child, l.age])
-	_field(col, "Problem", l.problem if l.problem != "" else l.body.left(40))
-	_field(col, "Needs", l.wants if l.wants != "" else "%s %d" % [l.skill_name(), l.level])
-	_field(col, "Dream test", "Dream Night, day %d · pays %d" % [l.dream_day, l.pays_great])
+	var fields := VBoxContainer.new()
+	fields.add_theme_constant_override("separation", 12)
+	col.add_child(fields)
+	_field(fields, "From", "%s, age %d" % [l.child, l.age])
+	_field(fields, "Problem", l.problem if l.problem != "" else l.body.left(40))
+	_field(fields, "Needs", l.wants if l.wants != "" else "%s %d" % [l.skill_name(), l.level])
+	var left := GameState.days_left(l)
+	var due := "Dream Night, day %d" % l.dream_day if accepted else "answer by day %d" % (l.arrives_day + l.answer_days)
+	_field(fields, "Due", "%s (%s)" % [due, "today!" if left <= 0 else "%d day%s left" % [left, "" if left == 1 else "s"]])
+	var spacer := Control.new()
+	spacer.custom_minimum_size.y = 16
+	col.add_child(spacer)
 	var boxes := HBoxContainer.new()
-	boxes.add_theme_constant_override("separation", 10)
+	boxes.add_theme_constant_override("separation", 6)
 	col.add_child(boxes)
-	boxes.add_child(W.CheckSquare.new(accepted, 26))
-	boxes.add_child(Style.label("Approved", 17, 600))
-	var gap := Control.new()
-	gap.custom_minimum_size.x = 18
-	boxes.add_child(gap)
-	boxes.add_child(W.CheckSquare.new(false, 26))
-	boxes.add_child(Style.label("Denied", 17, 600))
-	var ps := Style.hand_label(l.ps, 18, Style.CRAYON_PURPLE)
-	ps.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	ps.custom_minimum_size.x = 330
-	col.add_child(ps)
+	boxes.add_child(W.CheckSquare.new(accepted, 18))
+	boxes.add_child(Style.label("Approved", 15, 600))
+	var g2 := Control.new()
+	g2.custom_minimum_size.x = 12
+	boxes.add_child(g2)
+	boxes.add_child(W.CheckSquare.new(false, 18))
+	boxes.add_child(Style.label("Denied", 15, 600))
 	if accepted:
 		var o := Style.overlay()
-		var stamp := W.Stamp.new("RECEIVED", Style.HEART, 34, -14)
-		stamp.position = Vector2(150, 390)
+		o.set_anchors_preset(Control.PRESET_FULL_RECT)
+		var stamp := W.Stamp.new("Received", Style.HEART_DEEP, 28, -12, "Term 1 · Day %d" % l.arrives_day)
+		stamp.anchor_left = 1.0
+		stamp.anchor_right = 1.0
+		stamp.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+		stamp.offset_right = -10
+		stamp.offset_top = 128
 		o.add_child(stamp)
-		var sub := Style.label("TERM 1 · DAY %d" % l.arrives_day, 13, 700, Style.HEART)
-		sub.rotation_degrees = -14
-		sub.position = Vector2(196, 442)
-		sub.modulate.a = 0.85
-		o.add_child(sub)
 		paper.add_child(o)
 	else:
-		var open := Style.button("Open %s's letter" % l.child, 18, true, "letter")
-		open.custom_minimum_size.y = 52
+		var gap3 := Control.new()
+		gap3.custom_minimum_size.y = 14
+		col.add_child(gap3)
+		var open := Style.button("Open %s's letter" % l.child, "md", true, "paper-plane-tilt")
 		open.pressed.connect(func(): hud.screens.show_letter(l))
 		col.add_child(open)
 	return paper
 
 
 func _field(col: Control, key: String, value: String) -> void:
-	col.add_child(Style.caps(key, 13, Style.INK_SOFT))
-	var v := Style.hand_label(value, 24, Style.INK)
+	var f := VBoxContainer.new()
+	f.add_theme_constant_override("separation", 2)
+	col.add_child(f)
+	f.add_child(Style.caps(key, 12))
+	var v := Style.hand_label(value, 22, Style.INK)
 	v.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	v.custom_minimum_size.x = 330
-	col.add_child(v)
+	v.custom_minimum_size.x = 280
+	f.add_child(v)
 	var line := ColorRect.new()
-	line.color = Style.NOTEBOOK_LINE
+	line.color = Style.PAPER_LINE
 	line.custom_minimum_size = Vector2(0, 2)
-	col.add_child(line)
+	f.add_child(line)
 
 
-## One friend in the list: portrait, name, species, readiness, the skill as dots, a tick box.
-func _friend_row(s: Node3D, r: Dictionary) -> Control:
+## One friend: portrait, name, species, a note, the skill as a bar, valid or not.
+func _helper_row(s: Node3D, r: Dictionary) -> Control:
 	var chosen := s == picked
 	var b := Button.new()
 	b.focus_mode = Control.FOCUS_NONE
-	b.custom_minimum_size = Vector2(0, 104)
-	b.add_theme_stylebox_override("normal", Style.card_box(chosen, not chosen, 0))
-	var hover := Style.card_box(chosen, not chosen, 0)
-	hover.bg_color = hover.bg_color.lightened(0.1)
+	b.custom_minimum_size = Vector2(0, 90)
+	var face_box := Style.card_box(chosen, not chosen, 0)
+	face_box.shadow_offset = Vector2(0, 3)
+	b.add_theme_stylebox_override("normal", face_box)
+	var hover := Style.card_box(chosen, false, 0)
+	hover.shadow_offset = Vector2(0, 3)
 	b.add_theme_stylebox_override("hover", hover)
 	b.add_theme_stylebox_override("pressed", Style.card_box(true, false, 0))
 	b.tooltip_text = "Pick %s to see why. Right-click to open their card." % s.data.display_name
@@ -228,48 +248,52 @@ func _friend_row(s: Node3D, r: Dictionary) -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 16)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 12)
-	row.offset_left = 20
-	row.offset_right = -20
-	row.offset_bottom = -16
+	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 0)
+	row.offset_left = 14
+	row.offset_right = -14
+	row.offset_top = 10
+	row.offset_bottom = -10
 	b.add_child(row)
 	var face := PanelContainer.new()
-	face.add_theme_stylebox_override("panel", Style.flat_box(Style.SKY, Color("E8D3B5"), 3, 40, 4))
+	face.add_theme_stylebox_override("panel", Style.flat_box(Style.SKY_LIGHT, Style.PAPER_SHADOW, 2, 28, 2))
+	face.custom_minimum_size = Vector2(56, 56)
+	face.clip_contents = true
 	face.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	face.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	face.clip_contents = true
-	face.add_child(W.Portrait.new(s.data.gray_color, Vector2(62, 62), false, s.data.horns))
+	face.add_child(W.Portrait.new(s.data.gray_color, Vector2(52, 52), false, s.data.horns))
 	row.add_child(face)
 	var mid := VBoxContainer.new()
-	mid.add_theme_constant_override("separation", -4)
+	mid.add_theme_constant_override("separation", -2)
 	mid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	mid.alignment = BoxContainer.ALIGNMENT_CENTER
 	mid.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(mid)
-	mid.add_child(Style.label(s.data.display_name, 21, 700))
-	mid.add_child(Style.hand_label("%s · %s" % [s.data.kind.capitalize(), s.data.personality], 21, Style.INK_SOFT))
-	var status := Style.label("%s · %s" % [r.word, _status(s)], 15, 500)
-	status.clip_text = true
-	status.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	status.custom_minimum_size.x = 250
-	mid.add_child(status)
-	var skill := Style.label(current.skill_name(), 17, 600)
+	mid.add_child(Style.label(s.data.display_name, 18, 600))
+	mid.add_child(Style.hand_label("%s · %s" % [s.data.kind.capitalize(), s.data.personality], 18, Style.INK_SOFT))
+	var note := Style.label("%s · %s" % [r.word, _status(s)], 14, 500, Style.INK_SOFT)
+	note.clip_text = true
+	note.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	note.custom_minimum_size.x = 200
+	mid.add_child(note)
+	var skill := HBoxContainer.new()
+	skill.add_theme_constant_override("separation", 10)
+	skill.custom_minimum_size.x = 196
 	skill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	skill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(skill)
-	var bar := W.DotBar.new(10, Vector2(130, 16))
+	skill.add_child(Style.label(current.skill_name(), 14, 600))
+	var bar := W.DotBar.new(10, Vector2(90, 10))
 	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	bar.set_values(s.solid(current.skill), s.fresh(current.skill), -1.0, current.level)
 	bar.tooltip_text = "Coral line: %s %d, what %s needs" % [current.skill_name(), current.level, current.child]
-	row.add_child(bar)
-	var n := Style.label("%.1f" % r.effective, 17, 700)
-	n.custom_minimum_size.x = 34
-	n.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	skill.add_child(bar)
+	var n := Style.label("%.1f" % r.effective, 14, 700)
 	n.tooltip_text = "Counts as %.1f in the dream (fresh points count half)" % r.effective
 	n.mouse_filter = Control.MOUSE_FILTER_PASS
-	row.add_child(n)
-	var tick := W.CheckSquare.new(chosen, 30)
-	tick.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(tick)
+	skill.add_child(n)
+	var mark := W.PlacementMark.new(r.steps_short == 0, 32)
+	mark.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(mark)
 	return b
 
 

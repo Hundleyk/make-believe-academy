@@ -19,7 +19,8 @@ extends Resource
 @export var best_trait := ""                 ## The friend personality that pairs well
 @export var pays_great := 150
 @export var pays_okay := 80
-@export var dream_day := 7
+@export var dream_day := 7                   ## Dream Night: the friend must be ready by then
+@export var answer_days := 3                 ## Days to answer the letter before it's gone (Trust -1)
 @export var course := ""                     ## The course that teaches the skill
 ## Leo's crayon notes: the chapter objectives, in his voice (Game Design Doc, Objectives).
 @export var notes: Array[String] = []

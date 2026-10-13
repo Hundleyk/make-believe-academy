@@ -29,25 +29,27 @@ func setup(the_hud: CanvasLayer) -> void:
 	name = "CrayonNotes"
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_preset(Control.PRESET_FULL_RECT)
-	_paper = W.Notebook.new(30, 46, 20)
-	_paper.custom_minimum_size = Vector2(262, 0)
+	# The Letter component (components/paper/Letter.jsx): lined paper, cut c, a blue
+	# paperclip, a crayon doodle in the corner.
+	_paper = W.Notebook.new()
+	_paper.custom_minimum_size = Vector2(286, 0)
 	_paper.anchor_top = 1.0
 	_paper.anchor_bottom = 1.0
-	_paper.offset_left = 22
-	_paper.offset_bottom = -18
+	_paper.offset_left = Style.HUD_INSET
+	_paper.offset_bottom = -Style.HUD_INSET
 	_paper.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_paper.rotation_degrees = -3.0
+	_paper.rotation_degrees = -2.0
 	_paper.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(_paper)
 	_lines = VBoxContainer.new()
 	_lines.add_theme_constant_override("separation", 0)
 	_paper.add_child(_lines)
-	var o := Style.overlay()
-	var clip := W.Paperclip.new(Vector2(22, 52))
-	clip.position = Vector2(-10, -24)
-	o.add_child(clip)
-	_paper.add_child(o)
+	_paper.add_child(_doodle())
+	_paper.add_child(Style.clip(286))
 	visible = false
+	GameState.day_changed.connect(func(_d):
+		if letter != null:
+			_draw_notes())
 	GameState.letter_accepted.connect(func(l):
 		if letter == null:
 			letter = l
@@ -119,17 +121,26 @@ func current_index() -> int:
 
 
 func _draw_notes() -> void:
-	visible = UI.drawer != "requests"
+	visible = UI.drawer == ""
 	for c in _lines.get_children():
 		c.queue_free()
-	_lines.add_child(Style.hand_label("%s's notes to the Academy" % letter.child, 18, Style.CRAYON_PURPLE))
+	var head := HBoxContainer.new()
+	_lines.add_child(head)
+	var dear := lined("Dear Academy,", Style.INK, 120)
+	dear.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(dear)
+	var left := GameState.days_left(letter)
+	var due := Style.chip("Dream Night: %s" % ("today!" if left <= 0 else "%d day%s" % [left, "" if left == 1 else "s"]), Style.HONEY if left > 2 else Style.PEACH_LIGHT, Style.HONEY_DEEP if left > 2 else Style.HEART, 12, 700)
+	due.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	due.rotation_degrees = 3
+	due.tooltip_text = "%s's friend has to be ready by Dream Night, day %d." % [letter.child, letter.dream_day]
+	due.mouse_filter = Control.MOUSE_FILTER_PASS
+	head.add_child(due)
 	var cur := current_index()
 	for i in letter.notes.size():
 		if i > cur and cur != -1:
 			break
-		var l := Style.hand_label(letter.notes[i], 21, Style.NIGHT)
-		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		l.custom_minimum_size.x = 226
+		var l := lined(letter.notes[i])
 		l.mouse_filter = Control.MOUSE_FILTER_PASS
 		l.tooltip_text = HOW[i] if i < HOW.size() else ""
 		if done[i]:
@@ -137,9 +148,55 @@ func _draw_notes() -> void:
 			l.add_child(_strike())
 		_lines.add_child(l)
 	if cur != -1 and cur < letter.notes.size() - 1:
-		_lines.add_child(Style.hand_label("? ? ?", 19, Color(Style.NIGHT, 0.4)))
+		_lines.add_child(lined("? ? ?", Style.INK_SOFT))
 	if cur == -1:
-		_lines.add_child(Style.hand_label("All done! Now for the dream.", 19, Style.CRAYON_PURPLE))
+		_lines.add_child(lined("All done! Now for the dream."))
+	var sign := lined("— %s" % letter.child)
+	sign.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	sign.custom_minimum_size.x = 150
+	_lines.add_child(sign)
+
+
+## Handwriting that sits on the paper's rules: 22px Patrick Hand on 33px lines.
+static func lined(text: String, color := Style.INK, width := 212.0) -> Label:
+	var l := Style.hand_label(text, 22, color)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.custom_minimum_size.x = width
+	var f := Style.hand()
+	l.add_theme_constant_override("line_spacing", int(33 - f.get_height(22)))
+	l.custom_minimum_size.y = 33
+	return l
+
+
+## The crayon doodle in a letter's corner: a lavender scribble, a honey star, a coral heart.
+static func _doodle() -> Control:
+	var o := Style.overlay()
+	o.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var holder := Control.new()
+	holder.anchor_left = 1.0
+	holder.anchor_right = 1.0
+	holder.anchor_top = 1.0
+	holder.anchor_bottom = 1.0
+	holder.offset_left = -18 - 96
+	holder.offset_top = -16 - 80
+	holder.offset_right = -18
+	holder.offset_bottom = -16
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	o.add_child(holder)
+	var scribble := W.Icon.new("scribble-loop", 70, Style.LAVENDER, "bold")
+	scribble.position = Vector2(0, 10)
+	scribble.rotation_degrees = -10
+	scribble.modulate.a = 0.9
+	holder.add_child(scribble)
+	var star := W.Icon.new("star", 34, Style.HONEY, "fill", true)
+	star.position = Vector2(62, 0)
+	star.rotation_degrees = 12
+	holder.add_child(star)
+	var heart := W.Icon.new("heart", 22, Style.HEART, "fill")
+	heart.position = Vector2(58, 54)
+	heart.rotation_degrees = -14
+	holder.add_child(heart)
+	return o
 
 
 ## A wobbly coral crayon line across a finished note.
@@ -152,7 +209,7 @@ func _strike() -> Control:
 
 class Strike extends Control:
 	func _draw() -> void:
-		var rows := maxi(1, roundi(size.y / 24.0))   # one strike per wrapped line
+		var rows := maxi(1, roundi(size.y / 33.0))   # one strike per wrapped line
 		for r in rows:
 			var y := (r + 0.55) * size.y / rows
 			var pts := PackedVector2Array()
@@ -163,4 +220,4 @@ class Strike extends Control:
 				x += 14.0
 				i += 1
 			pts.append(Vector2(size.x, y))
-			draw_polyline(pts, Color("E05A68"), 3.0, true)
+			draw_polyline(pts, Color("E05A68"), 3.5, true)

@@ -43,6 +43,14 @@ func _process(delta: float) -> void:
 		input.x -= 1.0
 	if Input.is_physical_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_RIGHT):
 		input.x += 1.0
+	if Settings.edge_scroll and DisplayServer.get_name() != "headless" and get_window().has_focus():
+		# Edge scrolling (Settings > Gameplay): the mouse within 8px of a window edge pans.
+		var m := get_viewport().get_mouse_position()
+		var vs := get_viewport().get_visible_rect().size
+		if m.x < 8: input.x -= 1.0
+		elif m.x > vs.x - 8: input.x += 1.0
+		if m.y < 8: input.y -= 1.0
+		elif m.y > vs.y - 8: input.y += 1.0
 	if input != Vector2.ZERO:
 		input = input.normalized()
 		var right := global_transform.basis.x

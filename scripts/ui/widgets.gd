@@ -1,546 +1,306 @@
 extends RefCounted
-## Small drawn pieces of the stationery UI (UI System doc, "Building blocks").
-## Each is a Control that draws itself, so nothing depends on an emoji or a font glyph.
+## Drawn pieces of the Make-Believe Academy design system: Phosphor sticker icons, the
+## Giggles coin, cut paper, washi tape, stamps, skill bars, the term and trust meters,
+## placement marks, toggles. Each mirrors a component in the design system bundle.
 
 const Style := preload("res://scripts/ui/ui_style.gd")
+const ICONS_PATH := "res://ui/icons/phosphor.json"
+const BADGE_PATH := "res://ui/art/badge-felt-star.png"
+
+static var _svg := {}
+static var _tex := {}
 
 
-## The Giggles coin: a gold coin with a star (mockups' Giggles tag). `star` false = a plain
-## small coin for prices.
-class Coin extends Control:
-	var star := true
-
-	func _init(px := 30.0, with_star := true) -> void:
-		star = with_star
-		custom_minimum_size = Vector2(px, px)
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-	func _draw() -> void:
-		var r := minf(size.x, size.y) / 2.0
-		var c := size / 2.0
-		draw_circle(c + Vector2(0, r * 0.08), r - 1, Style.HONEY_DEEP.darkened(0.25))
-		draw_circle(c, r - 1, Style.HONEY_DEEP)
-		draw_circle(c, r * 0.78, Style.HONEY)
-		draw_arc(c, r - 1, 0, TAU, 32, Style.INK if r < 14 else Style.HONEY_DEEP.darkened(0.35), maxf(1.4, r * 0.08), true)
-		if star:
-			draw_colored_polygon(Icon.star_points(c, r * 0.5, r * 0.22), Style.HONEY_DEEP)
-			draw_polyline(Icon.star_points(c, r * 0.5, r * 0.22, true), Style.HONEY_DEEP.darkened(0.3), maxf(1.2, r * 0.05), true)
+## The SVG of a Phosphor icon, white-filled so it can take any color.
+static func icon_svg(icon: String, weight: String) -> String:
+	if _svg.is_empty():
+		var res = load(ICONS_PATH)
+		var data = res.data if res is JSON else JSON.parse_string(FileAccess.get_file_as_string(ICONS_PATH))
+		if data is Dictionary:
+			_svg = data
+	return _svg.get("%s-%s" % [icon, weight], "")
 
 
-## One heart of the Kids' Trust meter: filled or just an outline (shape, not only color).
-class Heart extends Control:
-	var filled := true
-
-	func _init(is_filled := true) -> void:
-		filled = is_filled
-		custom_minimum_size = Vector2(20, 18)
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-	func _draw() -> void:
-		var pts := PackedVector2Array()
-		for i in 33:
-			var t := TAU * i / 32.0
-			var x := 16.0 * pow(sin(t), 3)
-			var y := -(13.0 * cos(t) - 5.0 * cos(2 * t) - 2.0 * cos(3 * t) - cos(4 * t))
-			var k := size.x / 20.0
-			pts.append((Vector2(10, 8) + Vector2(x, y) * 0.55) * k + Vector2(0, (size.y - 18.0 * k) / 2.0))
-		if filled:
-			draw_colored_polygon(pts, Style.HEART)
-		draw_polyline(pts, Style.INK, maxf(1.6, size.x / 14.0), true)
+## A Phosphor icon rendered at twice `px` for crisp scaling, cached.
+static func icon_texture(icon: String, px: int, weight := "fill") -> Texture2D:
+	var key := "%s-%s-%d" % [icon, weight, px]
+	if _tex.has(key):
+		return _tex[key]
+	var svg := icon_svg(icon, weight)
+	if svg == "":
+		return null
+	var img := Image.new()
+	if img.load_svg_from_string(svg, px * 2.0 / 256.0) != OK:
+		return null
+	var tex := ImageTexture.create_from_image(img)
+	_tex[key] = tex
+	return tex
 
 
-## Check (ok) or cross (not ok) badge, drawn as a shape.
-class Badge extends Control:
-	var ok := true
-
-	func _init(is_ok := true, px := 18.0) -> void:
-		ok = is_ok
-		custom_minimum_size = Vector2(px, px)
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-	func _draw() -> void:
-		var r := size.x / 2.0
-		var c := size / 2.0
-		draw_circle(c, r - 1, Style.OK_GREEN if ok else Style.HEART)
-		draw_arc(c, r - 1, 0, TAU, 24, Style.INK, 1.4, true)
-		var s := r * 0.5
-		if ok:
-			draw_polyline(PackedVector2Array([c + Vector2(-s, 0), c + Vector2(-s * 0.2, s * 0.7), c + Vector2(s, -s * 0.6)]), Style.PAPER, 2.2, true)
-		else:
-			draw_line(c + Vector2(-s, -s), c + Vector2(s, s), Style.PAPER, 2.2, true)
-			draw_line(c + Vector2(s, -s), c + Vector2(-s, s), Style.PAPER, 2.2, true)
-
-
-## A "warning" badge: a honey circle with an exclamation mark.
-class Note extends Control:
-	func _init(px := 18.0) -> void:
-		custom_minimum_size = Vector2(px, px)
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-	func _draw() -> void:
-		var r := size.x / 2.0
-		var c := size / 2.0
-		draw_circle(c, r - 1, Style.HONEY)
-		draw_arc(c, r - 1, 0, TAU, 24, Style.INK, 1.4, true)
-		draw_line(c + Vector2(0, -r * 0.5), c + Vector2(0, r * 0.15), Style.INK, 2.2, true)
-		draw_circle(c + Vector2(0, r * 0.45), 1.4, Style.INK)
+## The slider knob: a paper circle with a 3px ink rim on a wood under-edge.
+static func knob_texture(px := 30) -> Texture2D:
+	var key := "knob%d" % px
+	if _tex.has(key):
+		return _tex[key]
+	var h := px + 3
+	var img := Image.create(px, h, false, Image.FORMAT_RGBA8)
+	var c := Vector2(px, px) / 2.0
+	var r := px / 2.0 - 0.5
+	for y in h:
+		for x in px:
+			var p := Vector2(x + 0.5, y + 0.5)
+			var d := p.distance_to(c)
+			var du := p.distance_to(c + Vector2(0, 3))
+			var col := Color(0, 0, 0, 0)
+			if du <= r:
+				col = Style.WOOD
+				col.a = clampf(r - du + 0.5, 0.0, 1.0)
+			if d <= r:
+				var face := Style.INK if d > r - 3.0 else Style.PAPER
+				face.a = clampf(r - d + 0.5, 0.0, 1.0)
+				col = col.blend(face) if col.a > 0 else face
+			img.set_pixel(x, y, col)
+	var tex := ImageTexture.create_from_image(img)
+	_tex[key] = tex
+	return tex
 
 
-## A skill bar with two shades: solid points (dark) and fresh points (light, fading),
-## plus the teacher's cap as a dotted line (Systems doc, learning model).
-class TwoShadeBar extends Control:
-	var solid := 0.0
-	var fresh := 0.0
-	var max_level := 6.0
-	var cap := -1.0          # teacher's skill level; below 0 hides it
-	var target := -1.0       # a request's level, drawn as a coral tick
-
-	func _init() -> void:
-		custom_minimum_size = Vector2(140, 12)
-		mouse_filter = Control.MOUSE_FILTER_PASS
-
-	func set_values(s: float, f: float, cap_level := -1.0, target_level := -1.0) -> void:
-		solid = s
-		fresh = f
-		cap = cap_level
-		target = target_level
-		queue_redraw()
-
-	func _draw() -> void:
-		var w := size.x
-		var h := size.y
-		var r := Rect2(Vector2.ZERO, Vector2(w, h))
-		draw_rect(r, Color("E9DCC4"), true)
-		var sw := w * clampf(solid / max_level, 0.0, 1.0)
-		var fw := w * clampf(fresh / max_level, 0.0, 1.0 - solid / max_level)
-		draw_rect(Rect2(0, 0, sw, h), Style.WOOD, true)
-		draw_rect(Rect2(sw, 0, fw, h), Style.CARDBOARD, true)
-		if cap >= 0.0:
-			var x := w * clampf(cap / max_level, 0.0, 1.0) - 1.0
-			var y := -2.0
-			while y < h + 2.0:
-				draw_line(Vector2(x, y), Vector2(x, minf(y + 2.5, h + 2.0)), Style.INK, 2.0)
-				y += 5.0
-		if target >= 0.0:
-			var tx := w * clampf(target / max_level, 0.0, 1.0)
-			draw_line(Vector2(tx, -3), Vector2(tx, h + 3), Style.HEART, 3.0)
-
-
-## A student's portrait: their capsule with eyes and a small smile on a colored card.
-class Portrait extends Control:
-	var body_color := Color.GRAY
-	var card := false
-	var horns := false
-
-	func _init(color: Color, px := Vector2(40, 48), on_card := false, with_horns := false) -> void:
-		body_color = color
-		card = on_card
-		horns = with_horns
-		custom_minimum_size = px
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-	func _draw() -> void:
-		if card:
-			draw_rect(Rect2(Vector2.ZERO, size), body_color.darkened(0.15), true)
-		var bw := size.x * (0.42 if card else 0.6)
-		var bh := size.y * (0.92 if card else 0.86)
-		var rect := Rect2(Vector2((size.x - bw) / 2.0, size.y - bh), Vector2(bw, bh + bw))
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = body_color.lightened(0.15) if card else body_color
-		sb.border_color = Style.INK
-		sb.set_border_width_all(3 if card else 2)
-		sb.set_corner_radius_all(int(bw / 2.0))
-		if horns:
-			var hx := rect.position.x + bw * 0.2
-			var hy := rect.position.y + bw * 0.12
-			draw_colored_polygon(PackedVector2Array([Vector2(hx, hy + bw * 0.1), Vector2(hx - bw * 0.1, hy - bw * 0.3), Vector2(hx + bw * 0.22, hy)]), sb.bg_color)
-			draw_colored_polygon(PackedVector2Array([Vector2(hx + bw * 0.6, hy + bw * 0.1), Vector2(hx + bw * 0.7, hy - bw * 0.3), Vector2(hx + bw * 0.38, hy)]), sb.bg_color)
-		draw_style_box(sb, rect)
-		var eye_y := rect.position.y + bw * 0.55
-		var er := maxf(2.0, bw * 0.08)
-		draw_circle(Vector2(size.x / 2.0 - bw * 0.18, eye_y), er, Style.INK)
-		draw_circle(Vector2(size.x / 2.0 + bw * 0.18, eye_y), er, Style.INK)
-		if card:
-			draw_arc(Vector2(size.x / 2.0, eye_y + bw * 0.15), bw * 0.18, 0.4, PI - 0.4, 12, Style.INK, 3.0, true)
-
-
-## Lined notebook paper drawn behind its children (letters and crayon notes).
-class Notebook extends PanelContainer:
-	var line_gap := 26.0
-	var top_pad := 40.0
-	var margin_x := 22.0
-
-	func _init(gap := 26.0, first_line := 40.0, margin_line_x := 22.0) -> void:
-		line_gap = gap
-		top_pad = first_line
-		margin_x = margin_line_x
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = Style.NOTEBOOK
-		sb.set_corner_radius_all(4)
-		sb.shadow_color = Color(Style.NIGHT, 0.3)
-		sb.shadow_size = 8
-		sb.shadow_offset = Vector2(0, 4)
-		sb.content_margin_left = margin_x + 12
-		sb.content_margin_right = 16
-		sb.content_margin_top = 12
-		sb.content_margin_bottom = 12
-		add_theme_stylebox_override("panel", sb)
-
-	func _draw() -> void:
-		var y := top_pad
-		while y < size.y - 4:
-			draw_line(Vector2(4, y), Vector2(size.x - 4, y), Style.NOTEBOOK_LINE, 1.2)
-			y += line_gap
-		draw_line(Vector2(margin_x, 0), Vector2(margin_x, size.y), Style.MARGIN_LINE, 2.0)
-
-
-## A rubber stamp: bordered capital letters at an angle.
-class Stamp extends PanelContainer:
-	func _init(text: String, color: Color, size_px := 30, angle := -12.0) -> void:
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = Color(0, 0, 0, 0)
-		sb.border_color = color
-		sb.set_border_width_all(4)
-		sb.set_corner_radius_all(8)
-		sb.content_margin_left = 14
-		sb.content_margin_right = 14
-		sb.content_margin_top = 2
-		sb.content_margin_bottom = 2
-		add_theme_stylebox_override("panel", sb)
-		var l := Style.label(text, size_px, 600, color)
-		add_child(l)
-		rotation_degrees = angle
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-		modulate.a = 0.85
-
-
-## A tiny drawing of an item for its Build menu card: its gray shape in its color.
-class ItemIcon extends Control:
-	var data: ItemData
-
-	func _init(d: ItemData) -> void:
-		data = d
-		custom_minimum_size = Vector2(30, 30)
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-	func _draw() -> void:
-		var c := size / 2.0
-		var k := minf(size.x, size.y) / 30.0
-		var col := data.gray_color
-		var line := maxf(1.6, k * 1.4)
-		match data.gray_shape:
-			"sphere":
-				draw_circle(c, 11 * k, col)
-				draw_arc(c, 11 * k, 0, TAU, 32, Style.INK, line, true)
-			"cylinder":
-				var r := Rect2(c - Vector2(11, 6) * k, Vector2(22, 14) * k)
-				draw_rect(r, col, true)
-				draw_rect(r, Style.INK, false, line)
-			_:
-				var sz := Vector2(22, 18)
-				if data.gray_size != Vector3.ZERO:
-					var gs := Vector2(data.gray_size.x, maxf(data.gray_size.y, data.gray_size.z))
-					sz = gs / maxf(gs.x, gs.y) * 24.0
-					sz = sz.max(Vector2(6, 6))
-				sz *= k
-				var r := Rect2(c - sz / 2.0, sz)
-				draw_rect(r, col, true)
-				draw_rect(r, Style.INK, false, line)
-		if data.gray_glow:
-			draw_circle(c + Vector2(0, -2) * k, 4.0 * k, Color(Style.HONEY, 0.9))
-
-
-## Small drawn icons for buttons and tiles. Each is a few strokes in ink, so nothing depends
-## on an emoji or an icon font. Names: play, plus, folder, gear, star, door, pause, fast,
-## save, home, back, reset, check, trash, close, hammer, calendar, students, staff,
-## requests, eye, moon, letter, sell, clock, credits.
+## A Phosphor icon (components/core/Icon.jsx). `outlined` = the sticker look: an ink
+## die-cut outline around a filled glyph.
 class Icon extends Control:
 	var shape := ""
 	var color := Style.INK
+	var weight := "fill"
+	var outlined := false
+	var px := 24
 
-	func _init(icon_name: String, px := 22.0, ink := Style.INK) -> void:
+	func _init(icon_name: String, size_px := 24.0, ink := Style.INK, icon_weight := "fill", sticker := false) -> void:
 		shape = icon_name
 		color = ink
-		custom_minimum_size = Vector2(px, px)
-		size = Vector2(px, px)
+		weight = icon_weight
+		outlined = sticker
+		px = int(size_px)
+		custom_minimum_size = Vector2(size_px, size_px)
+		size = custom_minimum_size
+		pivot_offset = size / 2.0
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	static func star_points(c: Vector2, outer: float, inner: float, closed := false) -> PackedVector2Array:
-		var pts := PackedVector2Array()
-		for i in 10:
-			var a := -PI / 2.0 + i * PI / 5.0
-			pts.append(c + Vector2(cos(a), sin(a)) * (outer if i % 2 == 0 else inner))
-		if closed:
-			pts.append(pts[0])
-		return pts
+	func set_icon(icon_name: String, ink := Color(-1, 0, 0)) -> void:
+		shape = icon_name
+		if ink.r >= 0:
+			color = ink
+		queue_redraw()
 
 	func _draw() -> void:
+		var tex: Texture2D = load("res://scripts/ui/widgets.gd").icon_texture(shape, px, weight)
+		if tex == null:
+			return
 		var s := minf(size.x, size.y)
-		var o := (size - Vector2(s, s)) / 2.0
-		var w := maxf(1.8, s * 0.11)
-		var p := func(x: float, y: float) -> Vector2: return o + Vector2(x, y) * s
-		var col := color
-		match shape:
-			"play":
-				draw_colored_polygon(PackedVector2Array([p.call(0.3, 0.18), p.call(0.82, 0.5), p.call(0.3, 0.82)]), col)
-			"plus":
-				draw_line(p.call(0.5, 0.15), p.call(0.5, 0.85), col, w * 1.3, true)
-				draw_line(p.call(0.15, 0.5), p.call(0.85, 0.5), col, w * 1.3, true)
-			"folder":
-				draw_colored_polygon(PackedVector2Array([p.call(0.08, 0.22), p.call(0.4, 0.22), p.call(0.48, 0.32), p.call(0.92, 0.32), p.call(0.92, 0.82), p.call(0.08, 0.82)]), col)
-				draw_line(p.call(0.14, 0.44), p.call(0.86, 0.44), Style.PAPER, w * 0.6)
-			"gear":
-				var c: Vector2 = p.call(0.5, 0.5)
-				for i in 8:
-					var a := i * TAU / 8.0
-					draw_line(c + Vector2(cos(a), sin(a)) * s * 0.22, c + Vector2(cos(a), sin(a)) * s * 0.44, col, s * 0.15)
-				draw_circle(c, s * 0.3, col)
-				draw_circle(c, s * 0.12, Style.PAPER)
-			"star":
-				draw_colored_polygon(star_points(p.call(0.5, 0.53), s * 0.46, s * 0.2), col)
-			"door":
-				draw_rect(Rect2(p.call(0.22, 0.1), Vector2(s * 0.56, s * 0.82)), col, false, w)
-				draw_circle(p.call(0.64, 0.54), s * 0.06, col)
-				draw_line(p.call(0.1, 0.92), p.call(0.9, 0.92), col, w)
-			"pause":
-				draw_rect(Rect2(p.call(0.2, 0.15), Vector2(s * 0.2, s * 0.7)), col)
-				draw_rect(Rect2(p.call(0.6, 0.15), Vector2(s * 0.2, s * 0.7)), col)
-			"fast":
-				draw_colored_polygon(PackedVector2Array([p.call(0.08, 0.2), p.call(0.5, 0.5), p.call(0.08, 0.8)]), col)
-				draw_colored_polygon(PackedVector2Array([p.call(0.48, 0.2), p.call(0.92, 0.5), p.call(0.48, 0.8)]), col)
-			"save":
-				draw_colored_polygon(PackedVector2Array([p.call(0.12, 0.12), p.call(0.72, 0.12), p.call(0.88, 0.28), p.call(0.88, 0.88), p.call(0.12, 0.88)]), col)
-				draw_rect(Rect2(p.call(0.28, 0.12), Vector2(s * 0.36, s * 0.22)), Style.PAPER)
-				draw_rect(Rect2(p.call(0.26, 0.55), Vector2(s * 0.48, s * 0.25)), Style.PAPER)
-			"home":
-				draw_colored_polygon(PackedVector2Array([p.call(0.5, 0.1), p.call(0.92, 0.48), p.call(0.08, 0.48)]), col)
-				draw_rect(Rect2(p.call(0.2, 0.46), Vector2(s * 0.6, s * 0.42)), col)
-				draw_rect(Rect2(p.call(0.43, 0.62), Vector2(s * 0.16, s * 0.26)), Style.PAPER)
-			"back":
-				draw_line(p.call(0.85, 0.5), p.call(0.2, 0.5), col, w * 1.2, true)
-				draw_polyline(PackedVector2Array([p.call(0.48, 0.2), p.call(0.16, 0.5), p.call(0.48, 0.8)]), col, w * 1.2, true)
-			"reset":
-				draw_arc(p.call(0.5, 0.52), s * 0.32, -PI * 0.4, PI * 1.35, 20, col, w, true)
-				draw_colored_polygon(PackedVector2Array([p.call(0.62, 0.05), p.call(0.86, 0.26), p.call(0.56, 0.36)]), col)
-			"check":
-				draw_polyline(PackedVector2Array([p.call(0.15, 0.52), p.call(0.4, 0.78), p.call(0.86, 0.22)]), col, w * 1.4, true)
-			"trash":
-				draw_rect(Rect2(p.call(0.24, 0.3), Vector2(s * 0.52, s * 0.6)), col)
-				draw_line(p.call(0.14, 0.22), p.call(0.86, 0.22), col, w)
-				draw_rect(Rect2(p.call(0.4, 0.1), Vector2(s * 0.2, s * 0.1)), col)
-			"close":
-				draw_line(p.call(0.2, 0.2), p.call(0.8, 0.8), col, w * 1.4, true)
-				draw_line(p.call(0.8, 0.2), p.call(0.2, 0.8), col, w * 1.4, true)
-			"hammer":
-				draw_line(p.call(0.3, 0.88), p.call(0.6, 0.38), col, w * 1.2, true)
-				draw_colored_polygon(PackedVector2Array([p.call(0.36, 0.22), p.call(0.66, 0.08), p.call(0.9, 0.42), p.call(0.62, 0.56)]), col)
-			"calendar":
-				draw_rect(Rect2(p.call(0.12, 0.2), Vector2(s * 0.76, s * 0.7)), col, false, w)
-				draw_rect(Rect2(p.call(0.12, 0.2), Vector2(s * 0.76, s * 0.18)), col)
-				for i in 3:
-					for j in 2:
-						draw_rect(Rect2(p.call(0.24 + i * 0.2, 0.5 + j * 0.18), Vector2(s * 0.11, s * 0.1)), col)
-				draw_line(p.call(0.32, 0.08), p.call(0.32, 0.26), col, w)
-				draw_line(p.call(0.68, 0.08), p.call(0.68, 0.26), col, w)
-			"students":
-				draw_circle(p.call(0.33, 0.36), s * 0.15, col)
-				draw_circle(p.call(0.68, 0.4), s * 0.13, col)
-				draw_colored_polygon(PackedVector2Array([p.call(0.08, 0.9), p.call(0.14, 0.6), p.call(0.52, 0.6), p.call(0.58, 0.9)]), col)
-				draw_colored_polygon(PackedVector2Array([p.call(0.5, 0.9), p.call(0.54, 0.62), p.call(0.86, 0.62), p.call(0.92, 0.9)]), col)
-			"staff":
-				draw_colored_polygon(PackedVector2Array([p.call(0.1, 0.38), p.call(0.5, 0.18), p.call(0.9, 0.38), p.call(0.5, 0.58)]), col)
-				draw_rect(Rect2(p.call(0.28, 0.46), Vector2(s * 0.44, s * 0.26)), col)
-				draw_line(p.call(0.82, 0.4), p.call(0.82, 0.74), col, w * 0.8)
-			"requests":
-				draw_rect(Rect2(p.call(0.18, 0.14), Vector2(s * 0.64, s * 0.78)), col, false, w)
-				draw_rect(Rect2(p.call(0.36, 0.06), Vector2(s * 0.28, s * 0.14)), col)
-				for i in 3:
-					draw_line(p.call(0.32, 0.42 + i * 0.16), p.call(0.68, 0.42 + i * 0.16), col, w * 0.7)
-			"eye":
-				var pts := PackedVector2Array()
-				for i in 17:
-					var t := i / 16.0
-					pts.append(p.call(0.08 + t * 0.84, 0.5 - sin(t * PI) * 0.28))
-				for i in 17:
-					var t := 1.0 - i / 16.0
-					pts.append(p.call(0.08 + t * 0.84, 0.5 + sin(t * PI) * 0.28))
-				draw_polyline(pts, col, w, true)
-				draw_circle(p.call(0.5, 0.5), s * 0.13, col)
-			"moon":
-				draw_arc(p.call(0.52, 0.5), s * 0.27, PI * 0.45, PI * 1.55, 20, col, s * 0.2, true)
-			"letter":
-				draw_rect(Rect2(p.call(0.1, 0.24), Vector2(s * 0.8, s * 0.56)), col, false, w)
-				draw_polyline(PackedVector2Array([p.call(0.1, 0.26), p.call(0.5, 0.56), p.call(0.9, 0.26)]), col, w, true)
-			"sell":
-				draw_colored_polygon(PackedVector2Array([p.call(0.1, 0.5), p.call(0.4, 0.16), p.call(0.88, 0.16), p.call(0.88, 0.84), p.call(0.4, 0.84)]), col)
-				draw_circle(p.call(0.38, 0.5), s * 0.07, Style.PAPER)
-			"clock":
-				draw_arc(p.call(0.5, 0.5), s * 0.38, 0, TAU, 24, col, w, true)
-				draw_line(p.call(0.5, 0.5), p.call(0.5, 0.26), col, w, true)
-				draw_line(p.call(0.5, 0.5), p.call(0.68, 0.58), col, w, true)
-			"credits":
-				draw_colored_polygon(star_points(p.call(0.36, 0.42), s * 0.26, s * 0.11), col)
-				draw_colored_polygon(star_points(p.call(0.7, 0.68), s * 0.2, s * 0.08), col)
-			_:
-				draw_rect(Rect2(p.call(0.12, 0.12), Vector2(s * 0.76, s * 0.76)), col)
+		var r := Rect2((size - Vector2(s, s)) / 2.0, Vector2(s, s))
+		if outlined:
+			var o := maxf(1.5, s / 28.0)
+			for i in 8:
+				var a := i * TAU / 8.0
+				draw_texture_rect(tex, Rect2(r.position + Vector2(cos(a), sin(a)) * o, r.size), false, Style.INK)
+		draw_texture_rect(tex, r, false, color)
 
 
-## A strip of washi tape: a translucent band with diagonal stripes and torn ends.
-class Washi extends Control:
-	var color := Style.WASHI_BLUE
+## The Giggles coin (components/core/Coin.jsx): honey, a honey-deep rim, a pale inner
+## ring, a wood under-edge, and a star.
+class Coin extends Control:
+	var big_shadow := false
 
-	func _init(c: Color, px := Vector2(72, 22)) -> void:
-		color = c
-		custom_minimum_size = px
-		size = px
-		clip_contents = true
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-	func _draw() -> void:
-		draw_rect(Rect2(Vector2.ZERO, size), Color(color, 0.85))
-		var x := -size.y
-		while x < size.x + size.y:
-			draw_line(Vector2(x, size.y), Vector2(x + size.y, 0), Color(1, 1, 1, 0.4), 4.0)
-			x += 11.0
-		# Torn ends: little notches in the paper color behind.
-		for i in 4:
-			var y := size.y * i / 4.0
-			draw_colored_polygon(PackedVector2Array([Vector2(0, y), Vector2(3, y + size.y / 8.0), Vector2(0, y + size.y / 4.0)]), Color(1, 1, 1, 0.35))
-
-
-## A blue square pin stuck in a corner, with a small shadow.
-class Pin extends Control:
-	var color := Style.PIN_BLUE
-
-	func _init(c: Color, px := 30.0) -> void:
-		color = c
+	func _init(px := 24.0, with_star := true, tilt_deg := 0.0) -> void:
 		custom_minimum_size = Vector2(px, px)
-		size = Vector2(px, px)
-		rotation_degrees = 14
+		size = custom_minimum_size
+		pivot_offset = size / 2.0
+		rotation_degrees = tilt_deg
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-	func _draw() -> void:
-		draw_rect(Rect2(Vector2(2, 4), size), Color(Style.NIGHT, 0.25))
-		draw_rect(Rect2(Vector2.ZERO, size), color)
-		draw_rect(Rect2(Vector2.ZERO, size), color.darkened(0.35), false, 2.0)
-
-
-## A paperclip holding a note (Leo's letter in the HUD corner).
-class Paperclip extends Control:
-	func _init(px := Vector2(26, 56)) -> void:
-		custom_minimum_size = px
-		size = px
-		rotation_degrees = -8
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-	func _draw() -> void:
-		var w := size.x
-		var h := size.y
-		var col := Color("5C6F8F")
-		var r1 := w * 0.45
-		var pts := PackedVector2Array()
-		# Outer loop down the left, round the bottom, up the right, round the top, inner loop.
-		pts.append(Vector2(w * 0.05, h * 0.75))
-		pts.append(Vector2(w * 0.05, r1))
-		for i in 9:
-			var a := PI + i * PI / 8.0
-			pts.append(Vector2(w * 0.5, r1) + Vector2(cos(a), sin(a)) * r1 * 1.0)
-		pts.append(Vector2(w * 0.95, h * 0.82))
-		for i in 9:
-			var a := i * PI / 8.0
-			pts.append(Vector2(w * 0.62, h * 0.82) + Vector2(cos(a), sin(a)) * w * 0.33)
-		pts.append(Vector2(w * 0.29, h * 0.32))
-		draw_polyline(pts, col, 3.0, true)
-
-
-## A sheet of paper with slightly uneven edges (mockups: the main menu sheet, forms).
-## Draws its own shadow and shape; children sit inside the margins.
-class Paper extends PanelContainer:
-	var color := Style.PAPER
-	var wobble := 3.0
-	var seed_i := 1
-	var shadow := true
-
-	func _init(bg := Style.PAPER, margin := 24, uneven := 3.0, seed_value := 1) -> void:
-		color = bg
-		wobble = uneven
-		seed_i = seed_value
-		var sb := StyleBoxEmpty.new()
-		sb.set_content_margin_all(margin)
-		add_theme_stylebox_override("panel", sb)
-
-	func _outline() -> PackedVector2Array:
-		var rng := RandomNumberGenerator.new()
-		rng.seed = seed_i
-		var pts := PackedVector2Array()
-		var steps_x := maxi(3, int(size.x / 160.0))
-		var steps_y := maxi(3, int(size.y / 160.0))
-		for i in steps_x:
-			pts.append(Vector2(size.x * i / steps_x, rng.randf_range(-wobble, wobble)))
-		for i in steps_y:
-			pts.append(Vector2(size.x + rng.randf_range(-wobble, wobble), size.y * i / steps_y))
-		for i in steps_x:
-			pts.append(Vector2(size.x * (steps_x - i) / steps_x, size.y + rng.randf_range(-wobble, wobble)))
-		for i in steps_y:
-			pts.append(Vector2(rng.randf_range(-wobble, wobble), size.y * (steps_y - i) / steps_y))
-		return pts
-
-	func _draw() -> void:
-		var pts := _outline()
-		if shadow:
-			var sh := PackedVector2Array()
-			for q in pts:
-				sh.append(q + Vector2(3, 7))
-			draw_colored_polygon(sh, Color(Style.NIGHT, 0.22))
-		draw_colored_polygon(pts, color)
-		var edge := pts.duplicate()
-		edge.append(pts[0])
-		draw_polyline(edge, Color(Style.PAPER_EDGE, 0.7), 1.0, true)
-
-
-## The Academy seal: a scalloped badge with a star and MAKE-BELIEVE around the top.
-class Seal extends Control:
-	func _init(px := 120.0) -> void:
-		custom_minimum_size = Vector2(px, px)
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var star := Icon.new("star", roundi(px * 0.52), Style.HONEY_DEEP, "fill", px >= 40)
+		star.position = (custom_minimum_size - star.size) / 2.0
+		star.visible = with_star
+		add_child(star)
 
 	func _draw() -> void:
 		var r := minf(size.x, size.y) / 2.0
 		var c := size / 2.0
+		var b := maxf(2.0, roundf(r * 2.0 / 16.0))
+		if big_shadow:
+			draw_circle(c + Vector2(0, 8), r, Color(Style.INK, 0.18))
+		draw_circle(c + Vector2(0, maxf(1.0, roundf(r / 10.0))), r, Style.WOOD)
+		draw_circle(c, r, Style.HONEY_DEEP)
+		draw_circle(c, r - b, Style.COIN_RING)
+		draw_circle(c, r - b - maxf(1.0, roundf(r * 2.0 / 14.0)), Style.HONEY)
+
+
+## Cut paper (components/core/PaperCard.jsx): a hand-cut edge (cut a, b, c, or none), a
+## crisp paper-shadow under-edge plus a soft cast shadow. Tones: paper, tan, lined, night,
+## board. `edge` adds the 4px cardboard inset of a Department form.
+class Paper extends PanelContainer:
+	const CUTS := {
+		"a": [[0.8, 1.6], [24, 0.4], [51, 1.2], [77, 0], [99.3, 1], [100, 34], [99.1, 67], [99.6, 98.6], [73, 100], [47, 98.9], [22, 100], [0.4, 99], [0, 64], [0.9, 31]],
+		"b": [[0, 0.6], [31, 1.4], [62, 0], [100, 1.2], [99.2, 29], [100, 58], [99.4, 100], [66, 98.8], [35, 100], [1, 99.2], [0.4, 70], [1, 38]],
+		"c": [[1.2, 0], [40, 1], [72, 0.2], [98.8, 1.4], [100, 46], [98.9, 99], [58, 100], [26, 98.7], [0, 99.6], [0.7, 52]],
+	}
+	var tone := "paper"
+	var cut := "a"
+	var edge := false
+	var line_offset := 26.0
+
+	func _init(paper_tone := "paper", margin: Variant = 18, cut_name := "a", tilt := 0.0, inset_edge := false) -> void:
+		tone = paper_tone
+		cut = cut_name
+		edge = inset_edge
+		var sb := StyleBoxEmpty.new()
+		if margin is Vector4:
+			sb.content_margin_top = margin.x
+			sb.content_margin_right = margin.y
+			sb.content_margin_bottom = margin.z
+			sb.content_margin_left = margin.w
+		else:
+			sb.set_content_margin_all(float(margin))
+		add_theme_stylebox_override("panel", sb)
+		rotation_degrees = tilt
+		resized.connect(func(): pivot_offset = size / 2.0)
+
+	func _outline() -> PackedVector2Array:
+		if cut == "none" or not CUTS.has(cut):
+			return PackedVector2Array([Vector2.ZERO, Vector2(size.x, 0), size, Vector2(0, size.y)])
 		var pts := PackedVector2Array()
-		for i in 49:
-			var a := i * TAU / 48.0
-			pts.append(c + Vector2(cos(a), sin(a)) * (r - 2.0 + (2.5 if i % 2 == 0 else 0.0)))
-		draw_colored_polygon(pts, Style.PIN_BLUE)
-		draw_circle(c, r * 0.86, Style.PAPER)
-		draw_arc(c, r * 0.86, 0, TAU, 48, Style.PIN_BLUE.darkened(0.3), 2.0, true)
-		draw_arc(c, r * 0.58, 0, TAU, 48, Color(Style.PIN_BLUE, 0.7), 1.5, true)
-		draw_colored_polygon(Icon.star_points(c + Vector2(0, -r * 0.04), r * 0.36, r * 0.15), Style.HONEY_DEEP)
-		draw_polyline(Icon.star_points(c + Vector2(0, -r * 0.04), r * 0.36, r * 0.15, true), Style.INK, 1.6, true)
-		# Ring text along the top arc.
-		var f := Style.font(700)
-		var fs := int(r * 0.17)
-		var text := "MAKE-BELIEVE"
-		var span := PI * 0.95
-		for i in text.length():
-			var a := -PI / 2.0 - span / 2.0 + span * (i + 0.5) / text.length()
-			var at := c + Vector2(cos(a), sin(a)) * r * 0.66
-			draw_set_transform(at, a + PI / 2.0, Vector2.ONE)
-			draw_string(f, Vector2(-fs * 0.3, fs * 0.35), text[i], HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Style.INK)
-		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-		# The red ribbon with ACADEMY.
-		var rw := r * 0.95
-		var rect := Rect2(c + Vector2(-rw / 2.0, r * 0.38), Vector2(rw, r * 0.26))
-		draw_rect(rect, Style.HEART)
-		draw_rect(rect, Style.HEART.darkened(0.3), false, 1.5)
-		var afs := int(r * 0.15)
-		var tw := f.get_string_size("ACADEMY", HORIZONTAL_ALIGNMENT_LEFT, -1, afs).x
-		draw_string(f, Vector2(c.x - tw / 2.0, rect.position.y + rect.size.y * 0.78), "ACADEMY", HORIZONTAL_ALIGNMENT_LEFT, -1, afs, Style.PAPER)
+		for p in CUTS[cut]:
+			pts.append(Vector2(size.x * p[0] / 100.0, size.y * p[1] / 100.0))
+		return pts
+
+	func _shifted(pts: PackedVector2Array, by: Vector2) -> PackedVector2Array:
+		var out := PackedVector2Array()
+		for q in pts:
+			out.append(q + by)
+		return out
+
+	func _draw() -> void:
+		if size.x < 4 or size.y < 4:
+			return
+		var pts := _outline()
+		var fill := Style.PAPER
+		match tone:
+			"tan":
+				fill = Style.TAB_TAN_LIGHT
+			"night":
+				fill = Style.INDIGO
+			"board":
+				fill = Style.BOARD
+		# Soft cast shadow, then the crisp under-edge (--drop-paper).
+		draw_colored_polygon(_shifted(pts, Vector2(0, 7)), Color(Style.INK, 0.07))
+		draw_colored_polygon(_shifted(pts, Vector2(0, 5)), Color(Style.INK, 0.07))
+		draw_colored_polygon(_shifted(pts, Vector2(0, 2)), Style.PAPER_SHADOW)
+		draw_colored_polygon(pts, fill)
+		if tone == "lined":
+			var y := line_offset + 31.0
+			while y < size.y - 6:
+				draw_line(Vector2(3, y + 1), Vector2(size.x - 3, y + 1), Style.PAPER_LINE, 2.0)
+				y += 33.0
+			draw_line(Vector2(35, 2), Vector2(35, size.y - 2), Style.PAPER_MARGIN, 2.0)
+		if edge:
+			var e := PackedVector2Array()
+			var c := size / 2.0
+			for q in pts:
+				e.append(q + (c - q).normalized() * 2.0)
+			e.append(e[0])
+			draw_polyline(e, Style.CARDBOARD, 4.0, true)
 
 
-## A skill as a row of dots (mockups 08 and 10): solid points dark, fresh points as
-## outlined tan dots, the rest sand. A coral tick marks a request's level; an ink notch
-## marks the teacher's cap.
+## Washi tape (components/core/WashiTape.jsx): 86% opacity, zigzag torn ends, stripes or dots.
+class Washi extends Control:
+	const SHAPE := [[2, 0], [98, 0], [100, 20], [97, 40], [100, 60], [97, 80], [99, 100], [1, 100], [3, 80], [0, 60], [3, 40], [0, 20]]
+	var color := Style.HONEY
+	var pattern := "stripes"
+
+	func _init(c: Color, px := Vector2(96, 26), pat := "stripes") -> void:
+		color = c
+		pattern = pat
+		custom_minimum_size = px
+		size = px
+		pivot_offset = px / 2.0
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		var poly := PackedVector2Array()
+		for p in SHAPE:
+			poly.append(Vector2(size.x * p[0] / 100.0, size.y * p[1] / 100.0))
+		draw_colored_polygon(poly, Color(color, 0.86))
+		if pattern == "stripes":
+			var x := -size.y
+			while x < size.x:
+				var band := PackedVector2Array([Vector2(x, size.y), Vector2(x + 5.0, size.y), Vector2(x + 5.0 + size.y, 0), Vector2(x + size.y, 0)])
+				for part in Geometry2D.intersect_polygons(band, poly):
+					draw_colored_polygon(part, Color(Style.PAPER, 0.4))
+				x += 10.0
+		elif pattern == "dots":
+			var yy := 5.0
+			while yy < size.y:
+				var xx := 5.0
+				while xx < size.x - 3:
+					draw_circle(Vector2(xx, yy), 2.0, Color(Style.PAPER, 0.62))
+					xx += 10.0
+				yy += 10.0
+
+
+## A rubber stamp (components/paper/Stamp.jsx): uppercase, wide-spaced, a double rim,
+## at 88% so the paper shows through, with an optional sub line ("TERM 1 · DAY 8").
+class Stamp extends PanelContainer:
+	var color := Style.HEART_DEEP
+
+	func _init(text: String, c := Style.HEART_DEEP, size_px := 28, angle := -12.0, sub := "") -> void:
+		color = c
+		var sb := StyleBoxEmpty.new()
+		sb.content_margin_left = 19
+		sb.content_margin_right = 19
+		sb.content_margin_top = 10
+		sb.content_margin_bottom = 11
+		add_theme_stylebox_override("panel", sb)
+		var col := VBoxContainer.new()
+		col.add_theme_constant_override("separation", 2)
+		col.alignment = BoxContainer.ALIGNMENT_CENTER
+		add_child(col)
+		var l := Label.new()
+		l.text = text.to_upper()
+		l.add_theme_font_override("font", Style.font(700, roundi(size_px * 0.14)))
+		l.add_theme_font_size_override("font_size", size_px)
+		l.add_theme_color_override("font_color", c)
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		col.add_child(l)
+		if sub != "":
+			var line := ColorRect.new()
+			line.color = c
+			line.custom_minimum_size = Vector2(0, 2)
+			col.add_child(line)
+			var s := Label.new()
+			s.text = sub.to_upper()
+			s.add_theme_font_override("font", Style.font(700, maxi(1, roundi(size_px * 0.04))))
+			s.add_theme_font_size_override("font_size", roundi(size_px * 0.42))
+			s.add_theme_color_override("font_color", c)
+			s.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			col.add_child(s)
+		rotation_degrees = angle
+		modulate.a = 0.88
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		resized.connect(func(): pivot_offset = size / 2.0)
+
+	func _draw() -> void:
+		var r := Rect2(Vector2(1, 1), size - Vector2(2, 2))
+		var sb := StyleBoxFlat.new()
+		sb.draw_center = false
+		sb.border_color = color
+		sb.set_border_width_all(2)
+		sb.set_corner_radius_all(8)
+		draw_style_box(sb, r)
+		sb.set_corner_radius_all(5)
+		draw_style_box(sb, r.grow(-3.5))
+
+
+## A skill meter (components/meters/SkillBar.jsx): segments, solid dark (wood), fresh
+## striped tan with a wood rim (can fade), the rest sand. A coral tick marks a request's
+## level; an ink notch marks the teacher's cap.
 class DotBar extends Control:
 	var solid := 0.0
 	var fresh := 0.0
@@ -548,7 +308,7 @@ class DotBar extends Control:
 	var cap := -1.0
 	var target := -1.0
 
-	func _init(count := 10, px := Vector2(150, 14)) -> void:
+	func _init(count := 10, px := Vector2(150, 10)) -> void:
 		dots = count
 		custom_minimum_size = px
 		mouse_filter = Control.MOUSE_FILTER_PASS
@@ -564,42 +324,54 @@ class DotBar extends Control:
 		var gap := 3.0
 		var w := (size.x - gap * (dots - 1)) / dots
 		var h := size.y
+		var ns := floori(solid + 0.0001)
+		var nf := floori(solid + fresh + 0.0001) - ns
 		for i in dots:
 			var r := Rect2(Vector2(i * (w + gap), 0), Vector2(w, h))
-			var fill := Style.TRACK
-			var outline := Color(0, 0, 0, 0)
-			if i + 1 <= roundi(solid):
-				fill = Style.WOOD
-			elif i + 1 <= roundi(solid + fresh):
-				fill = Style.TAB_TAN
-				outline = Style.WOOD
 			var sb := StyleBoxFlat.new()
-			sb.bg_color = fill
-			sb.set_corner_radius_all(int(minf(w, h) * 0.3))
-			if outline.a > 0:
-				sb.border_color = outline
-				sb.set_border_width_all(2)
+			sb.set_corner_radius_all(3)
+			if i == 0:
+				sb.corner_radius_top_left = 6
+				sb.corner_radius_bottom_left = 6
+			if i == dots - 1:
+				sb.corner_radius_top_right = 6
+				sb.corner_radius_bottom_right = 6
+			var kind := "solid" if i < ns else ("fresh" if i < ns + nf else "empty")
+			match kind:
+				"solid":
+					sb.bg_color = Style.WOOD
+				"fresh":
+					sb.bg_color = Style.TAB_TAN
+					sb.border_color = Style.WOOD
+					sb.set_border_width_all(2)
+				_:
+					sb.bg_color = Style.PAPER_SHADOW
 			draw_style_box(sb, r)
+			if kind == "fresh":
+				var x := r.position.x - h
+				while x < r.end.x:
+					var band := PackedVector2Array([Vector2(x, h), Vector2(x + 3, h), Vector2(x + 3 + h, 0), Vector2(x + h, 0)])
+					var box := PackedVector2Array([r.position + Vector2(2, 2), Vector2(r.end.x - 2, r.position.y + 2), r.end - Vector2(2, 2), Vector2(r.position.x + 2, r.end.y - 2)])
+					for part in Geometry2D.intersect_polygons(band, box):
+						draw_colored_polygon(part, Color(Style.PAPER, 0.6))
+					x += 6.0
+			elif kind == "empty":
+				draw_line(r.position + Vector2(2, 1), Vector2(r.end.x - 2, r.position.y + 1), Color(Style.INK, 0.15), 2.0)
 		if cap >= 0.0 and cap < dots:
-			var x := cap * (w + gap) - gap / 2.0
-			draw_line(Vector2(x, -3), Vector2(x, h + 3), Style.INK, 2.0)
+			var cx := cap * (w + gap) - gap / 2.0
+			draw_line(Vector2(cx, -3), Vector2(cx, h + 3), Style.INK, 2.0)
 		if target > 0.0:
 			var tx := target * (w + gap) - gap / 2.0
 			draw_line(Vector2(tx, -4), Vector2(tx, h + 4), Style.HEART, 3.0)
 
 
-## A long rounded meter: a dark track, and a fill that runs coral -> honey -> green
-## (the Kids' Trust meter), or one color (the clock bar). An optional knob marks the end.
-class Meter extends Control:
+## The Term clock bar (TermClock): a 16px wood track, a green fill inset 3px with a light
+## top, and a peach-rose marker with an ink rim.
+class ClockBar extends Control:
 	var value := 0.5
-	var rainbow := true
-	var fill_color := Style.OK_GREEN
-	var knob := false
 
-	func _init(px := Vector2(180, 18), multi := true, knob_mark := false) -> void:
+	func _init(px := Vector2(280, 16)) -> void:
 		custom_minimum_size = px
-		rainbow = multi
-		knob = knob_mark
 		mouse_filter = Control.MOUSE_FILTER_PASS
 
 	func set_value(v: float) -> void:
@@ -609,147 +381,383 @@ class Meter extends Control:
 	func _draw() -> void:
 		var h := size.y
 		var track := StyleBoxFlat.new()
-		track.bg_color = Style.BAR_DARK
+		track.bg_color = Style.WOOD
 		track.set_corner_radius_all(int(h / 2.0))
 		draw_style_box(track, Rect2(Vector2.ZERO, size))
-		var inner := Rect2(Vector2(3, 3), size - Vector2(6, 6))
-		var fw := inner.size.x * value
-		if fw > 1.0:
-			var sb := StyleBoxFlat.new()
-			sb.set_corner_radius_all(int(inner.size.y / 2.0))
-			if rainbow:
-				# Three bands so the color shows how full it is.
-				var cols := [Style.HEART, Style.HONEY_DEEP, Style.OK_GREEN]
-				var band := inner.size.x / 3.0
-				for i in 3:
-					var x0 := inner.position.x + band * i
-					var bw := clampf(fw - band * i, 0.0, band)
-					if bw <= 0.0:
-						break
-					sb.bg_color = cols[i]
-					sb.corner_radius_top_left = int(inner.size.y / 2.0) if i == 0 else 0
-					sb.corner_radius_bottom_left = sb.corner_radius_top_left
-					var last := fw <= band * (i + 1)
-					sb.corner_radius_top_right = int(inner.size.y / 2.0) if last else 0
-					sb.corner_radius_bottom_right = sb.corner_radius_top_right
-					draw_style_box(sb, Rect2(Vector2(x0, inner.position.y), Vector2(bw, inner.size.y)))
-			else:
-				sb.bg_color = fill_color
-				draw_style_box(sb, Rect2(inner.position, Vector2(fw, inner.size.y)))
-				draw_line(inner.position + Vector2(4, 2), inner.position + Vector2(fw - 4, 2), Color(1, 1, 1, 0.35), 2.0)
-		if knob:
-			var kx := inner.position.x + fw
-			var kr := Rect2(Vector2(kx - 5, -3), Vector2(10, h + 6))
-			var k := StyleBoxFlat.new()
-			k.bg_color = Style.HEART
-			k.border_color = Style.INK
-			k.set_border_width_all(2)
-			k.set_corner_radius_all(4)
-			draw_style_box(k, kr)
+		var fw := size.x * value - 6.0
+		if fw > 2.0:
+			var f := StyleBoxFlat.new()
+			f.bg_color = Style.GREEN
+			f.set_corner_radius_all(int((h - 6) / 2.0))
+			draw_style_box(f, Rect2(Vector2(3, 3), Vector2(fw, h - 6)))
+			if fw > 10:
+				draw_line(Vector2(7, 4.5), Vector2(fw - 2, 4.5), Color(Style.PAPER, 0.35), 3.0)
+		var k := StyleBoxFlat.new()
+		k.bg_color = Style.PEACH
+		k.border_color = Style.INK
+		k.set_border_width_all(2)
+		k.set_corner_radius_all(6)
+		draw_style_box(k, Rect2(Vector2(size.x * value - 6, -5), Vector2(12, 26)))
 
 
-## The striped loading bar (mockup 06): green candy stripes that slide along.
-class LoadBar extends Control:
-	var value := 0.0
-	var offset := 0.0
+## The Kids' Trust bar (TrustMeter): a 24px wood track, a coral fill with paler ticks every
+## 20px, and a green "gain" piece showing what's coming.
+class TrustBar extends Control:
+	var value := 0.5
+	var gain := 0.0
 
-	func _init(px := Vector2(420, 22)) -> void:
+	func _init(px := Vector2(220, 24)) -> void:
 		custom_minimum_size = px
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		mouse_filter = Control.MOUSE_FILTER_PASS
 
-	func _process(delta: float) -> void:
-		if not Settings.reduce_motion:
-			offset = fmod(offset + delta * 30.0, 16.0)
+	func set_values(v: float, g := 0.0) -> void:
+		value = clampf(v, 0.0, 1.0)
+		gain = clampf(g, 0.0, 1.0 - value)
 		queue_redraw()
 
 	func _draw() -> void:
 		var h := size.y
 		var track := StyleBoxFlat.new()
-		track.bg_color = Style.BAR_DARK
+		track.bg_color = Style.WOOD
 		track.set_corner_radius_all(int(h / 2.0))
 		draw_style_box(track, Rect2(Vector2.ZERO, size))
-		var fw := (size.x - 6.0) * clampf(value, 0.0, 1.0)
-		if fw < 2.0:
-			return
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = Style.OK_GREEN
-		sb.set_corner_radius_all(int((h - 6.0) / 2.0))
-		var r := Rect2(Vector2(3, 3), Vector2(fw, h - 6.0))
-		draw_style_box(sb, r)
-		var x := -16.0 + offset
-		while x < fw:
-			var a := Vector2(clampf(x + 3.0, 3.0, 3.0 + fw), 3.0)
-			var b := Vector2(clampf(x + 3.0 + (h - 6.0), 3.0, 3.0 + fw), h - 3.0)
-			draw_line(a, b, Color(1, 1, 1, 0.3), 5.0)
-			x += 16.0
+		var fw := size.x * value - 4.0
+		if fw > 2.0:
+			var f := StyleBoxFlat.new()
+			f.bg_color = Style.HEART
+			f.corner_radius_top_left = int((h - 8) / 2.0)
+			f.corner_radius_bottom_left = int((h - 8) / 2.0)
+			draw_style_box(f, Rect2(Vector2(4, 4), Vector2(fw, h - 8)))
+			var x := 22.0
+			while x < fw:
+				draw_line(Vector2(x, 4), Vector2(x, h - 4), Color("E9707C"), 2.0)
+				x += 20.0
+			draw_line(Vector2(10, 5.5), Vector2(fw, 5.5), Color(Style.PAPER, 0.3), 3.0)
+		if gain > 0.0:
+			draw_rect(Rect2(Vector2(size.x * value, 4), Vector2(size.x * gain, h - 8)), Style.GREEN)
 
 
-## Diagonal stripes behind a portrait ("PORTRAIT" placeholder in mockup 08).
-class Stripes extends Control:
-	var color := Style.SKY
+## The loading bar (mockup 06): a wood track with a 3px paper rim and a green fill under
+## washi stripes that slide along.
+class LoadBar extends Control:
+	var value := 0.0
+	var offset := 0.0
 
-	func _init(c := Style.SKY) -> void:
-		color = c
+	func _init(px := Vector2(520, 22)) -> void:
+		custom_minimum_size = px
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 
+	func _process(delta: float) -> void:
+		if not Settings.reduce_motion:
+			offset = fmod(offset + delta * 24.0, 10.0)
+		queue_redraw()
+
 	func _draw() -> void:
+		var h := size.y
 		var sb := StyleBoxFlat.new()
-		sb.bg_color = color
-		sb.set_corner_radius_all(10)
-		sb.border_color = color.darkened(0.2)
-		sb.set_border_width_all(2)
+		sb.bg_color = Style.WOOD
+		sb.border_color = Style.PAPER
+		sb.set_border_width_all(3)
+		sb.set_corner_radius_all(int(h / 2.0))
 		draw_style_box(sb, Rect2(Vector2.ZERO, size))
-		var x := -size.y
-		while x < size.x:
-			var a := Vector2(x, size.y)
-			var b := Vector2(x + size.y, 0)
-			# Clip the stripe to the box.
-			if a.x < 0:
-				a = Vector2(0, size.y + x)
-			if b.x > size.x:
-				b = Vector2(size.x, size.y - (size.x - x))
-			if a.x < b.x:
-				draw_line(a, b, Color(1, 1, 1, 0.45), 6.0)
-			x += 22.0
+		var inner := Rect2(Vector2(3, 3), Vector2((size.x - 6) * clampf(value, 0.0, 1.0), h - 6))
+		if inner.size.x < 4:
+			return
+		var f := StyleBoxFlat.new()
+		f.bg_color = Style.GREEN
+		f.set_corner_radius_all(int(inner.size.y / 2.0))
+		draw_style_box(f, inner)
+		var box := PackedVector2Array([inner.position + Vector2(4, 0), Vector2(inner.end.x - 4, inner.position.y), inner.end - Vector2(4, 0), Vector2(inner.position.x + 4, inner.end.y)])
+		var x := inner.position.x - inner.size.y + offset - 10.0
+		while x < inner.end.x:
+			var band := PackedVector2Array([Vector2(x, inner.end.y), Vector2(x + 5, inner.end.y), Vector2(x + 5 + inner.size.y, inner.position.y), Vector2(x + inner.size.y, inner.position.y)])
+			for part in Geometry2D.intersect_polygons(band, box):
+				draw_colored_polygon(part, Color(Style.PAPER, 0.45))
+			x += 10.0
 
 
-## A dashed rounded outline (the Empty Cubby slot, "Not discovered yet").
-class Dashed extends Control:
-	var color := Style.CARDBOARD
+## Valid or invalid (components/feedback/PlacementMark.jsx): a green circle with a check,
+## or a coral square tilted -6° with an X. Shape, not only color.
+class PlacementMark extends Control:
+	var valid := true
 
-	func _init(c := Style.CARDBOARD) -> void:
-		color = c
+	func _init(ok := true, px := 32.0) -> void:
+		valid = ok
+		custom_minimum_size = Vector2(px, px + 3)
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var ic := Icon.new("check-fat" if ok else "x", roundi(px * 0.56), Style.PAPER, "fill" if ok else "bold")
+		ic.position = Vector2(px, px) / 2.0 - ic.size / 2.0
+		add_child(ic)
+
+	func _draw() -> void:
+		var s := custom_minimum_size.x
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Style.GREEN if valid else Style.HEART
+		sb.border_color = Style.INK
+		sb.set_border_width_all(3 if s >= 24 else 2)
+		sb.set_corner_radius_all(int(s / 2.0) if valid else roundi(s * 0.22))
+		sb.shadow_color = Style.INK
+		sb.shadow_size = 1
+		sb.shadow_offset = Vector2(0, 3 if s >= 24 else 2)
+		if not valid:
+			draw_set_transform(Vector2(s, s) / 2.0, deg_to_rad(-6), Vector2.ONE)
+			draw_style_box(sb, Rect2(-Vector2(s, s) / 2.0, Vector2(s, s)))
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		else:
+			draw_style_box(sb, Rect2(Vector2.ZERO, Vector2(s, s)))
+
+
+## Badge kept for older callers: the PlacementMark at a small size.
+class Badge extends PlacementMark:
+	func _init(is_ok := true, px := 18.0) -> void:
+		super(is_ok, px)
+
+
+## A "note" badge: a honey circle with an exclamation mark (a warning reason).
+class Note extends Control:
+	func _init(px := 18.0) -> void:
+		custom_minimum_size = Vector2(px, px)
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	func _draw() -> void:
-		var r := Rect2(Vector2(1, 1), size - Vector2(2, 2))
-		var edges := [[r.position, Vector2(r.end.x, r.position.y)], [Vector2(r.end.x, r.position.y), r.end],
-			[r.end, Vector2(r.position.x, r.end.y)], [Vector2(r.position.x, r.end.y), r.position]]
-		for e in edges:
-			var a: Vector2 = e[0]
-			var b: Vector2 = e[1]
-			var n := int(a.distance_to(b) / 10.0)
-			for i in n:
-				if i % 2 == 0:
-					draw_line(a.lerp(b, float(i) / n), a.lerp(b, float(i + 1) / n), color, 2.5)
+		var r := size.x / 2.0
+		var c := size / 2.0
+		draw_circle(c, r - 1, Style.HONEY)
+		draw_arc(c, r - 1, 0, TAU, 24, Style.INK, 2.0, true)
+		draw_line(c + Vector2(0, -r * 0.5), c + Vector2(0, r * 0.15), Style.INK, 2.4, true)
+		draw_circle(c + Vector2(0, r * 0.45), 1.6, Style.INK)
 
 
-## A form checkbox: an ink square, ticked or empty (Approved / Denied, friend rows).
+## A form checkbox (RequestForm): an 18px square with an ink rim, ticked or empty.
 class CheckSquare extends Control:
 	var ticked := false
 
-	func _init(on := false, px := 24.0) -> void:
+	func _init(on := false, px := 18.0) -> void:
 		ticked = on
 		custom_minimum_size = Vector2(px, px)
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	func _draw() -> void:
 		var sb := StyleBoxFlat.new()
-		sb.bg_color = Style.PAPER
+		sb.draw_center = false
 		sb.border_color = Style.INK
-		sb.set_border_width_all(3)
-		sb.set_corner_radius_all(6)
+		sb.set_border_width_all(2)
+		sb.set_corner_radius_all(4)
 		draw_style_box(sb, Rect2(Vector2.ZERO, size))
 		if ticked:
 			var s := size.x
-			draw_polyline(PackedVector2Array([Vector2(s * 0.22, s * 0.52), Vector2(s * 0.42, s * 0.72), Vector2(s * 0.8, s * 0.26)]), Style.OK_DEEP, 3.5, true)
+			draw_polyline(PackedVector2Array([Vector2(s * 0.2, s * 0.5), Vector2(s * 0.42, s * 0.74), Vector2(s * 0.86, s * 0.18)]), Style.GREEN_DEEP, 3.0, true)
+
+
+## The settings toggle (mockup 03): a 68x36 pill with a 3px ink rim, green when on and
+## sand when off, and a paper knob holding a check or an X.
+class Toggle extends Control:
+	signal toggled(on: bool)
+	var on := false
+	var _icon: Icon
+
+	func _init(start := false) -> void:
+		on = start
+		custom_minimum_size = Vector2(68, 36)
+		mouse_filter = Control.MOUSE_FILTER_STOP
+		mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		_icon = Icon.new("check" if on else "x", 12, Style.INK, "bold")
+		add_child(_icon)
+		_place()
+
+	func _knob_x() -> float:
+		return 37.0 if on else 6.0
+
+	func _place() -> void:
+		_icon.set_icon("check" if on else "x")
+		_icon.position = Vector2(_knob_x() + 6, 12)
+
+	func _gui_input(e: InputEvent) -> void:
+		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+			on = not on
+			_place()
+			queue_redraw()
+			toggled.emit(on)
+			accept_event()
+
+	func _draw() -> void:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Style.GREEN if on else Style.PAPER_SHADOW
+		sb.border_color = Style.INK
+		sb.set_border_width_all(3)
+		sb.set_corner_radius_all(18)
+		draw_style_box(sb, Rect2(Vector2.ZERO, Vector2(68, 36)))
+		var k := StyleBoxFlat.new()
+		k.bg_color = Style.PAPER
+		k.border_color = Style.INK
+		k.set_border_width_all(2)
+		k.set_corner_radius_all(12)
+		draw_style_box(k, Rect2(Vector2(_knob_x(), 6), Vector2(24, 24)))
+
+
+## The Academy badge (logo A, felt patch) from the design system's assets.
+class Seal extends TextureRect:
+	func _init(px := 96.0) -> void:
+		texture = load(BADGE_PATH)
+		expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		custom_minimum_size = Vector2(px, px)
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+
+## The portrait slot (StudentCard): sky-light with paper stripes at 135° and an inset rim.
+class Stripes extends Control:
+	var color := Style.SKY_LIGHT
+
+	func _init(c := Style.SKY_LIGHT) -> void:
+		color = c
+		clip_contents = true
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = color
+		sb.set_corner_radius_all(10)
+		draw_style_box(sb, Rect2(Vector2.ZERO, size))
+		var box := PackedVector2Array([Vector2(3, 3), Vector2(size.x - 3, 3), size - Vector2(3, 3), Vector2(3, size.y - 3)])
+		var x := -size.y
+		while x < size.x:
+			var band := PackedVector2Array([Vector2(x, size.y), Vector2(x + 14, size.y), Vector2(x + 14 + size.y, 0), Vector2(x + size.y, 0)])
+			for part in Geometry2D.intersect_polygons(band, box):
+				draw_colored_polygon(part, Color(Style.PAPER, 0.35))
+			x += 28.0
+		var rim := StyleBoxFlat.new()
+		rim.draw_center = false
+		rim.border_color = Color(Style.WOOD, 0.18)
+		rim.set_border_width_all(3)
+		rim.set_corner_radius_all(10)
+		draw_style_box(rim, Rect2(Vector2.ZERO, size))
+
+
+## A dashed outline (Empty Cubby, "Not discovered yet") or a dashed rule (height ≤ width).
+class Dashed extends Control:
+	var color := Style.CARDBOARD
+	var width := 3.0
+	var dash := 9.0
+
+	func _init(c := Style.CARDBOARD, w := 3.0) -> void:
+		color = c
+		width = w
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		if size.y <= width + 1:
+			_dashes(Vector2(0, size.y / 2.0), Vector2(size.x, size.y / 2.0))
+			return
+		var r := Rect2(Vector2(width / 2.0, width / 2.0), size - Vector2(width, width))
+		_dashes(r.position, Vector2(r.end.x, r.position.y))
+		_dashes(Vector2(r.end.x, r.position.y), r.end)
+		_dashes(r.end, Vector2(r.position.x, r.end.y))
+		_dashes(Vector2(r.position.x, r.end.y), r.position)
+
+	func _dashes(a: Vector2, b: Vector2) -> void:
+		var n := maxi(1, int(a.distance_to(b) / dash))
+		for i in n:
+			if i % 2 == 0:
+				draw_line(a.lerp(b, float(i) / n), a.lerp(b, float(i + 1) / n), color, width)
+
+
+## A student's graybox portrait: their capsule with eyes and a smile (until the art pass).
+class Portrait extends Control:
+	var body_color := Color.GRAY
+	var horns := false
+
+	func _init(color: Color, px := Vector2(40, 48), _on_card := false, with_horns := false) -> void:
+		body_color = color
+		horns = with_horns
+		custom_minimum_size = px
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		var bw := size.x * 0.5
+		var bh := size.y * 0.85
+		var rect := Rect2(Vector2((size.x - bw) / 2.0, size.y - bh), Vector2(bw, bh + bw))
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = body_color
+		sb.border_color = Style.INK
+		sb.set_border_width_all(maxi(2, int(bw / 20.0)))
+		sb.set_corner_radius_all(int(bw / 2.0))
+		if horns:
+			var hx := rect.position.x + bw * 0.2
+			var hy := rect.position.y + bw * 0.12
+			draw_colored_polygon(PackedVector2Array([Vector2(hx, hy + bw * 0.1), Vector2(hx - bw * 0.1, hy - bw * 0.3), Vector2(hx + bw * 0.22, hy)]), body_color)
+			draw_colored_polygon(PackedVector2Array([Vector2(hx + bw * 0.6, hy + bw * 0.1), Vector2(hx + bw * 0.7, hy - bw * 0.3), Vector2(hx + bw * 0.38, hy)]), body_color)
+		draw_style_box(sb, rect)
+		var eye_y := rect.position.y + bw * 0.55
+		var er := maxf(2.0, bw * 0.08)
+		draw_circle(Vector2(size.x / 2.0 - bw * 0.18, eye_y), er, Style.INK)
+		draw_circle(Vector2(size.x / 2.0 + bw * 0.18, eye_y), er, Style.INK)
+		draw_arc(Vector2(size.x / 2.0, eye_y + bw * 0.14), bw * 0.16, 0.4, PI - 0.4, 12, Style.INK, maxf(2.0, bw / 24.0), true)
+
+
+## Lined paper (the Letter's stock): cut c, a pink margin line, blue rules every 33px.
+class Notebook extends Paper:
+	func _init(_gap := 33.0, _first_line := 26.0, _margin_line_x := 35.0) -> void:
+		super("lined", Vector4(26, 24, 30, 50), "c")
+
+
+## An item's sticker for its card: the Phosphor icon chosen for it, in wood.
+class ItemIcon extends Control:
+	var data: ItemData
+
+	func _init(d: ItemData, px := 30.0) -> void:
+		data = d
+		custom_minimum_size = Vector2(px, px)
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var ic := Icon.new(item_icon(d), px, Style.WOOD, "fill")
+		ic.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		add_child(ic)
+
+	static func item_icon(d: ItemData) -> String:
+		match String(d.id):
+			"toy_chest": return "treasure-chest"
+			"nightlight": return "lamp"
+			"pillow_bed": return "bed"
+			"floor_cushion": return "couch"
+			"cardboard_boxes": return "cube"
+			"tamed_closet_monster": return "paw-print"
+			"calm_down_corner": return "armchair"
+			"teachers_armchair": return "armchair"
+			"chalkboard_easel": return "chalkboard-simple"
+			"dream_door": return "door"
+			"fidget_box": return "puzzle-piece"
+			"glow_stars": return "star-four"
+			"milk_and_cookies_cart": return "cookie"
+			"monster_costume_rack": return "mask-happy"
+			"partition_wall": return "wall"
+			"rubber_duck": return "bathtub"
+			"small_group_table": return "table"
+			"story_corner_rug": return "book-open"
+			"tea_party_set": return "coffee"
+			"thunder_in_a_jar": return "lightning"
+			"whoopee_cushion": return "balloon"
+			"graduate_keepsake": return "medal"
+		return "cube"
+
+	## The card tint for an item, by what kind of thing it is (ItemCard tints).
+	static func item_tint(d: ItemData) -> Color:
+		match d.type:
+			"Light":
+				return Style.HONEY
+			"Comfort":
+				return Style.LAVENDER_LIGHT
+			"Fun":
+				return Style.LIME
+			"Structure":
+				return Style.TAB_TAN_LIGHT
+			"Regulation":
+				return Style.SKY_LIGHT
+			"Decor":
+				return Style.PEACH_LIGHT
+		return Style.SKY_LIGHT
+
+
+## A heart sticker (kept for older callers).
+class Heart extends Icon:
+	func _init(_filled := true) -> void:
+		super("heart", 20, Style.HEART, "fill", true)

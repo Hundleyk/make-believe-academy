@@ -11,6 +11,8 @@ const STARTING_TRUST := 5                ## Kids' Trust, 0-10 (Systems doc, Losi
 signal trust_changed(amount: int)
 signal speed_changed(speed: int)
 signal letter_accepted(letter: LetterData)
+signal letter_expired(letter: LetterData)
+signal day_changed(day: int)
 
 var giggles := STARTING_GIGGLES
 var discovered_combos: Dictionary = {}   # combo id -> true
@@ -65,6 +67,38 @@ func discover_combo(combo: ComboData) -> bool:
 	return true
 
 
+## The school in play: its save slot (1-3, 0 = none yet), name, and the calendar day.
+## Days advance with the day clock (M1 week 4); advance_day() is the hook.
+var current_slot := 0
+var school_name := ""
+var day := 1
+var expired_letters: Array[LetterData] = []   ## Requests that ran out of time
+const SCHOOL_NAMES := ["Sunny Hollow Academy", "Pillow Peak School", "Maple Street Academy",
+	"Blanket Bay School", "Moonbeam Meadow Academy", "Crayon Creek School"]
+
+
+func advance_day() -> void:
+	day += 1
+	day_changed.emit(day)
+
+
+## Days left before a request's deadline (Systems doc, Requests: time limits).
+## Unanswered: answer within `answer_days` of arriving. Answered: be ready by Dream Night.
+func days_left(letter: LetterData) -> int:
+	if accepted_letters.has(letter):
+		return letter.dream_day - day
+	return letter.arrives_day + letter.answer_days - day
+
+
+func expire_letter(letter: LetterData) -> void:
+	if expired_letters.has(letter):
+		return
+	expired_letters.append(letter)
+	trust = maxi(0, trust - 1)
+	trust_changed.emit(trust)
+	letter_expired.emit(letter)
+
+
 ## Time played in this school (seconds, not counting menus), and when it was last saved.
 var play_seconds := 0.0
 var last_saved_at := 0                 ## Unix time; 0 = never saved
@@ -76,6 +110,9 @@ func _process(delta: float) -> void:
 
 
 func reset() -> void:
+	day = 1
+	expired_letters.clear()
+	school_name = ""
 	play_seconds = 0.0
 	last_saved_at = 0
 	giggles = STARTING_GIGGLES

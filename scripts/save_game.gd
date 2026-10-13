@@ -80,8 +80,9 @@ static func save(main: Node3D, slot: int, picture: Image = null) -> bool:
 	var data := {
 		"version": VERSION,
 		"saved_at": int(Time.get_unix_time_from_system()),
-		"school": "Make-Believe Academy",
-		"day": 1,
+		"school": GameState.school_name if GameState.school_name != "" else "Make-Believe Academy",
+		"day": GameState.day,
+		"expired": GameState.expired_letters.map(func(l): return String(l.id)),
 		"play_seconds": GameState.play_seconds,
 		"period": st.period,
 		"period_left": st.period_left,
@@ -101,6 +102,7 @@ static func save(main: Node3D, slot: int, picture: Image = null) -> bool:
 	f.store_string(JSON.stringify(data, "  "))
 	f.close()
 	GameState.last_saved_at = int(data.saved_at)
+	GameState.current_slot = slot
 	if picture != null:
 		var img := picture.duplicate() as Image
 		img.resize(384, int(384.0 * img.get_height() / maxf(img.get_width(), 1.0)), Image.INTERPOLATE_BILINEAR)
@@ -129,6 +131,14 @@ static func load_into(main: Node3D, slot: int) -> bool:
 	GameState.trust = int(data.get("trust", GameState.STARTING_TRUST))
 	GameState.play_seconds = float(data.get("play_seconds", 0.0))
 	GameState.last_saved_at = int(data.get("saved_at", 0))
+	GameState.current_slot = slot
+	GameState.school_name = String(data.get("school", "Make-Believe Academy"))
+	GameState.day = int(data.get("day", 1))
+	GameState.expired_letters.clear()
+	for lid in data.get("expired", []):
+		for l in main.letters:
+			if String(l.id) == lid:
+				GameState.expired_letters.append(l)
 	GameState.discovered_combos.clear()
 	for c in data.get("combos", []):
 		GameState.discovered_combos[StringName(c)] = true

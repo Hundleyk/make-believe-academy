@@ -4,6 +4,7 @@ extends Node3D
 ## students in code,
 ## so the scene file stays tiny and every number lives here where it is easy to tune.
 
+const SaveGame := preload("res://scripts/save_game.gd")
 const CameraRig := preload("res://scripts/camera_rig.gd")
 const BuildMode := preload("res://scripts/build_mode.gd")
 const Hud := preload("res://scripts/ui/hud.gd")
@@ -105,6 +106,7 @@ func _ready() -> void:
 	add_child(students)
 	build_mode.students = students
 
+	GameState.day_changed.connect(_check_deadlines)
 	hud = Hud.new()
 	hud.name = "HUD"
 	add_child(hud)
@@ -113,12 +115,31 @@ func _ready() -> void:
 		UI.open_screen("title")
 
 
-## New Game from the title screen: Leo's letter arrives a moment later.
-func start_new_game() -> void:
+## New School from the title screen, in save slot `slot` (0 = no slot): the school is saved
+## there right away, and Leo's letter arrives a moment later.
+func start_new_game(slot := 0, school := "") -> void:
 	camera_rig.rotation.y = 0.0
+	GameState.current_slot = slot
+	GameState.school_name = school if school != "" else GameState.SCHOOL_NAMES[randi() % GameState.SCHOOL_NAMES.size()]
+	if slot > 0:
+		SaveGame.save(self, slot)
 	await get_tree().create_timer(0.8).timeout
 	if not letters.is_empty() and GameState.accepted_letters.is_empty() and not UI.blocking():
 		hud.screens.show_letter(letters[0])
+
+
+## Requests with time limits (Systems doc): a letter nobody answered in time is gone, and
+## the child's trust in the Academy drops. Runs when a day passes.
+func _check_deadlines(_day: int) -> void:
+	for l in letters:
+		if not GameState.accepted_letters.has(l) and not GameState.expired_letters.has(l) and GameState.days_left(l) < 0:
+			GameState.expire_letter(l)
+			UI.toast("%s's letter ran out of time" % l.child, "Nobody answered. Kids' Trust -1.", "maybe next time...")
+
+
+## Letters still open (not answered in time = gone).
+func open_letters() -> Array:
+	return letters.filter(func(l): return not GameState.expired_letters.has(l))
 
 
 ## Pause screen's Quit to Title: start the scene over (the title screen opens on load).
