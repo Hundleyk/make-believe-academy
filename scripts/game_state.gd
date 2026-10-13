@@ -94,7 +94,7 @@ func expire_letter(letter: LetterData) -> void:
 	if expired_letters.has(letter):
 		return
 	expired_letters.append(letter)
-	trust = maxi(0, trust - 1)
+	trust = maxi(0, trust - (2 if letter.featured else 1))   # Systems doc: -1 routine, -2 featured
 	trust_changed.emit(trust)
 	letter_expired.emit(letter)
 

@@ -134,7 +134,7 @@ func _check_deadlines(_day: int) -> void:
 	for l in letters:
 		if not GameState.accepted_letters.has(l) and not GameState.expired_letters.has(l) and GameState.days_left(l) < 0:
 			GameState.expire_letter(l)
-			UI.toast("%s's letter ran out of time" % l.child, "Nobody answered. Kids' Trust -1.", "maybe next time...")
+			UI.toast("%s's letter ran out of time" % l.child, "Nobody answered. Kids' Trust -%d." % (2 if l.featured else 1), "maybe next time...")
 
 
 ## Letters still open (not answered in time = gone).
