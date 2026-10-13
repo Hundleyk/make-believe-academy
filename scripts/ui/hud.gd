@@ -683,7 +683,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	match event.physical_keycode:
 		KEY_ESCAPE:
-			if build_mode.holding != null or build_mode.sell_mode:
+			if build_mode.holding != null or build_mode.sell_mode or main.carry.carried != null:
 				return   # build mode backs out of holding or selling first
 			UI.back()
 		KEY_SPACE:

@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="StudentData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/student_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"paper_dragon"
+display_name = "Paper Dragon"
+kind = "paper dragon teacher"
+start_needs = {
+"calm": 8,
+"fun": 6,
+"rest": 8
+}
+start_skills = {
+"bravery": [6.0, 0.0],
+"listening": [4.0, 0.0],
+"silliness": [2.0, 0.0]
+}
+personality = "Thoughtful"
+quirk = "Folds when flustered"
+quirk_text = "The Academy's first teacher. Teaches Bravery up to 6, Listening up to 4, Silliness up to 2."
+learning_pace = "Steady"
+horns = true
+gray_color = Color(0.93, 0.9, 0.82, 1)
+gray_height = 1.3

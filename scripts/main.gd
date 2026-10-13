@@ -9,6 +9,8 @@ const CameraRig := preload("res://scripts/camera_rig.gd")
 const BuildMode := preload("res://scripts/build_mode.gd")
 const Hud := preload("res://scripts/ui/hud.gd")
 const Students := preload("res://scripts/students.gd")
+const Staff := preload("res://scripts/staff.gd")
+const Carry := preload("res://scripts/carry.gd")
 
 const WALL_HEIGHT := 1.2
 const WALL_THICKNESS := 0.2
@@ -66,6 +68,8 @@ void fragment() {
 var camera_rig: Node3D
 var build_mode: Node3D
 var students: Node3D
+var staff: Node3D
+var carry: Node3D
 var hud: CanvasLayer
 var letters: Array[LetterData] = []  ## Every child's letter in the demo (data/letters/)
 var wall_rects: Array[Rect2] = []   ## Every wall's floor outline (x, z); students walk around them
@@ -105,6 +109,16 @@ func _ready() -> void:
 	students.camera_rig = camera_rig
 	add_child(students)
 	build_mode.students = students
+
+	staff = Staff.new()
+	staff.name = "Staff"
+	staff.main = self
+	add_child(staff)
+
+	carry = Carry.new()
+	carry.name = "Carry"
+	carry.main = self
+	add_child(carry)
 
 	GameState.day_changed.connect(_check_deadlines)
 	hud = Hud.new()

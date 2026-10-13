@@ -94,6 +94,7 @@ static func save(main: Node3D, slot: int, picture: Image = null) -> bool:
 		"letters": letters,
 		"items": items,
 		"students": studs,
+		"teachers": main.staff.teachers.map(func(t): return {"id": String(t.data.id), "x": t.global_position.x, "z": t.global_position.z, "room": t.home_room}),
 		"camera": {"x": main.camera_rig.position.x, "z": main.camera_rig.position.z, "turn": main.camera_rig.rotation.y},
 	}
 	var f := FileAccess.open(path(slot), FileAccess.WRITE)
@@ -116,6 +117,8 @@ static func load_into(main: Node3D, slot: int) -> bool:
 		return false
 	var bm: Node3D = main.build_mode
 	var st: Node3D = main.students
+	if main.carry.carried != null:
+		main.carry.cancel()
 	bm.stop_holding()
 	bm.set_sell_mode(false)
 	bm.clear_all()
@@ -167,6 +170,12 @@ static func load_into(main: Node3D, slot: int) -> bool:
 					s.skills[skill] = [float(pts[0]), float(pts[1])]
 				s.state = s.State.IDLE
 				s.activity = "Looking around"
+	for td in data.get("teachers", []):
+		for t in main.staff.teachers:
+			if String(t.data.id) == td.id:
+				t.stop()
+				t.global_position = Vector3(float(td.x), 0.0, float(td.z))
+				t.home_room = String(td.get("room", ""))
 	var cam: Dictionary = data.get("camera", {})
 	if not cam.is_empty():
 		main.camera_rig.position = Vector3(float(cam.x), 0.0, float(cam.z))

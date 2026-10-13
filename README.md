@@ -29,6 +29,11 @@ badge. The UI's base size is the mockups' 1280x720; Godot scales it to the windo
 - **Pause** (Esc or the gear tile): Resume, Save School, Load School (3 slots with a picture of your school; Save School saves to the school's own slot), Settings, Main Menu
 - **Settings** (Apply to save): Audio volumes, Video (fullscreen, UI size, reduce motion), Gameplay (readable font, camera speed), Controls (key list)
 
+## Picking up students and teachers
+- **Click** a student or teacher to pick them up, **click** again to put them down (or press, drag, and let go)
+- Drop a student **on an item** and they go use it; drop the **paper dragon** (the first teacher) in a room and it becomes their room
+- **Right-click** or **Esc** puts them back; **double-click** a student for their card
+
 ## Controls
 - **WASD** or arrow keys: pan the camera
 - **Mouse wheel**: zoom

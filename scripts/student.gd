@@ -37,6 +37,9 @@ var last_changes := {}            ## need -> Array of [reason, amount] from the 
 var act_out_need := ""
 var act_out_left := 0.0           ## Seconds until the act-out ends
 var idle_time := 0.0              ## Seconds standing with nothing to do
+var is_teacher := false           ## Teachers share this body and walking (staff.gd runs them)
+var home_room := ""               ## Teachers: the room they stay in (where you last dropped them)
+var carried := false              ## Picked up by the player (carry.gd)
 
 var body: Node3D
 var _icon: Sprite3D
@@ -164,7 +167,7 @@ func goal() -> Vector3:
 
 func _physics_process(real_delta: float) -> void:
 	var delta := real_delta * GameState.sim_scale()   # game speed; 0 when paused
-	if not _moving or delta <= 0.0:
+	if carried or not _moving or delta <= 0.0:
 		return
 	var speed := WANDER_SPEED if state == State.WANDERING else WALK_SPEED
 	var step := speed * delta
@@ -289,6 +292,13 @@ func _clear_prop() -> void:
 # --- Animation --------------------------------------------------------------------
 
 func _process(real_delta: float) -> void:
+	if carried:
+		# Dangling from the cursor: a gentle swing (legs-kicking comes with the art pass).
+		_anim_t += real_delta
+		if not Settings.reduce_motion:
+			body.rotation.z = sin(_anim_t * 6.0) * 0.18
+			body.rotation.x = sin(_anim_t * 4.3) * 0.08
+		return
 	var delta := real_delta * GameState.sim_scale()
 	_anim_t += delta
 	if is_acting_out():
@@ -344,6 +354,39 @@ func _hop() -> void:
 	tw.tween_callback(func(): _hopping = false)
 
 
+# --- Picking up and dropping (carry.gd) --------------------------------------------
+
+## Lifted by the player: stop whatever they were doing.
+func lift() -> void:
+	if is_acting_out():
+		end_act_out()
+	stop()
+	target_item = null
+	state = State.IDLE
+	carried = true
+	_hopping = false
+	body.position = Vector3.ZERO
+	body.scale = Vector3.ONE
+	activity = "Being carried (wheee!)"
+
+
+## Set down at `at` (on the floor). A squash on landing, then they get on with things.
+func land(at: Vector3) -> void:
+	carried = false
+	global_position = Vector3(at.x, 0.0, at.z)
+	body.rotation = Vector3.ZERO
+	idle_time = 0.0
+	state = State.IDLE
+	activity = "Just landed" if not is_teacher else "Settling in"
+	if Settings.reduce_motion:
+		return
+	_hopping = true
+	body.scale = Vector3(1.25, 0.7, 1.25)
+	var tw := create_tween()
+	tw.tween_property(body, "scale", Vector3.ONE, 0.45).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+	tw.tween_callback(func(): _hopping = false)
+
+
 # --- Skills -----------------------------------------------------------------------
 
 func solid(skill: String) -> float:
@@ -376,6 +419,10 @@ func best_skill() -> String:
 
 ## Hover text: name, needs, and why they changed last period.
 func hint_text() -> String:
+	if is_teacher:
+		var room := "the %s" % home_room.capitalize() if home_room != "" else "the yard"
+		return "%s  ·  teacher  ·  %s\nTeaches Bravery up to %d, Listening up to %d, Silliness up to %d\nClick or drag to pick up and move (stays in %s)" % [
+			data.display_name, activity, int(solid("bravery")), int(solid("listening")), int(solid("silliness")), room]
 	var parts: Array[String] = []
 	for need in NEEDS:
 		var low := "  (low)" if needs[need] < LOW_NEED else ""
@@ -388,5 +435,5 @@ func hint_text() -> String:
 				why.append("%s %s%d (%s)" % [NEED_NAMES[need], "+" if c[1] > 0 else "", c[1], c[0]])
 	if not why.is_empty():
 		lines.append("Last period: " + ", ".join(why))
-	lines.append("Test keys while hovering: C, F, Z empty Calm, Fun, Rest")
+	lines.append("Click or drag to pick up  ·  double-click for their card  ·  C, F, Z test keys")
 	return "\n".join(lines)

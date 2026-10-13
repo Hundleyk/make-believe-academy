@@ -517,6 +517,8 @@ func _update_hover() -> void:
 	var p: Placed = occupancy.get(hover_tile) if hover_tile != null else null
 	if students != null and students.hovered != null:
 		p = null   # the student in front gets the hover, not the item behind them
+	if main != null and main.carry != null and main.carry.carried != null:
+		p = null   # carrying someone: the drop marker shows the target instead
 	if p == _hovered:
 		return
 	_clear_hover()
@@ -535,6 +537,8 @@ func _clear_hover() -> void:
 
 
 func _compose_hint() -> String:
+	if main != null and main.carry != null and main.carry.carried != null:
+		return main.carry.hint()
 	if holding != null:
 		var line := "%s  ·  %d Giggles  ·  %s" % [holding.display_name, holding.cost, holding.effect_text]
 		if moving_from != null:

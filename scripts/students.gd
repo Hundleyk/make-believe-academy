@@ -203,7 +203,7 @@ func items_in_range(s: Node3D) -> Array:
 ## Free-time rule from the Systems doc: walk to the item that best meets the lowest need.
 ## An item serves up to ITEM_CAPACITY students; when the best is full, try the next.
 func choose_target(s: Node3D) -> void:
-	if s.is_acting_out() or not nav_ready:
+	if s.carried or s.is_acting_out() or not nav_ready:
 		return
 	var order: Array = Student.NEEDS.duplicate()
 	order.sort_custom(func(a, b): return s.needs[a] < s.needs[b])
@@ -239,6 +239,22 @@ func choose_target(s: Node3D) -> void:
 		return   # happy where they are
 	s.target_item = null
 	_mill_about(s)
+
+
+## Send a student straight to an item (dropped on it by the player). False if it's full
+## or there's nowhere to stand.
+func send_to(s: Node3D, p) -> bool:
+	if users_of(p, s) >= ITEM_CAPACITY:
+		return false
+	var spot = stand_spot(p, s)
+	if spot == null:
+		return false
+	s.target_item = p
+	s.activity = "Off to the %s (you sent them)" % p.data.display_name
+	if s.walk_to(spot):
+		return true
+	s.target_item = null
+	return false
 
 
 func _mill_about(s: Node3D) -> void:
@@ -306,6 +322,8 @@ func _spot_taken(spot: Vector3, me: Node3D) -> bool:
 # --- Act-outs ---------------------------------------------------------------------
 
 func start_act_out(s: Node3D, need: String) -> void:
+	if s.carried:
+		return   # they'll act out once they're put down
 	var seconds := period_seconds
 	if need == "calm":
 		for p in items_in_range(s):
@@ -477,13 +495,17 @@ func _on_nav_updated() -> void:
 
 func _update_hover() -> void:
 	var found: Node3D = null
-	if build_mode.holding == null and build_mode.debug_hover_tile == null and camera_rig != null and not UI.blocking():
+	var carrying: bool = main != null and main.get("carry") != null and main.carry.carried != null
+	if not carrying and build_mode.holding == null and not build_mode.sell_mode and build_mode.debug_hover_tile == null and camera_rig != null and not UI.blocking():
 		var vp := get_viewport()
 		if vp.gui_get_hovered_control() == null:
 			var mouse := vp.get_mouse_position()
 			var cam: Camera3D = camera_rig.camera
 			var best := 34.0   # pixels
-			for s in students:
+			var agents: Array = students.duplicate()
+			if main.get("staff") != null:
+				agents.append_array(main.staff.teachers)
+			for s in agents:
 				var head: Vector3 = s.global_position + Vector3.UP * s.data.gray_height * 0.6
 				if cam.is_position_behind(head):
 					continue
@@ -500,7 +522,7 @@ var debug_hovered: Node3D = null   # tests set this instead of using the mouse
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if UI.blocking() or hovered == null or not (event is InputEventKey) or not event.pressed or event.echo:
+	if UI.blocking() or hovered == null or hovered.is_teacher or not (event is InputEventKey) or not event.pressed or event.echo:
 		return
 	match event.physical_keycode:
 		KEY_C:
